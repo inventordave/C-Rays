@@ -1,0 +1,46 @@
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Raytracer"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "ImageViewer"
+
+[[workflows.workflow]]
+name = "Raytracer"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "gcc src/*.c -o raytracer -lm && ./raytracer"
+
+[[workflows.workflow]]
+name = "ImageViewer"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "display output.ppm"
+
+[deployment]
+run = ["sh", "-c", "gcc src/*.c -o raytracer -lm && ./raytracer"]
