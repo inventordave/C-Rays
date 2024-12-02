@@ -1,11 +1,39 @@
 #include "scene.h"
 #include <float.h>
 #include <math.h>
+#include <stdlib.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
+
+Texture* scene_load_normal_map(Scene* scene, const char* filename) {
+    if (scene->normal_map_count >= MAX_NORMAL_MAPS) return NULL;
+    
+    Texture* map = &scene->normal_maps[scene->normal_map_count];
+    map->data = stbi_load(filename, &map->width, &map->height, &map->channels, 3);
+    
+    if (map->data) {
+        scene->normal_map_count++;
+        return map;
+    }
+    return NULL;
+}
+
+void scene_free_normal_maps(Scene* scene) {
+    for (int i = 0; i < scene->normal_map_count; i++) {
+        if (scene->normal_maps[i].data) {
+            stbi_image_free(scene->normal_maps[i].data);
+        }
+    }
+    scene->normal_map_count = 0;
+}
 Scene scene_create() {
     Scene scene = {
         .sphere_count = 0,
         .light_count = 0,
+        .mesh_count = 0,
+        .aperture = 0.1,        // Default aperture size
+        .focal_distance = 5.0,  // Default focal distance
         .background_color = {0.2, 0.2, 0.2}
     };
     return scene;
@@ -22,12 +50,18 @@ void scene_add_light(Scene* scene, Light light) {
         scene->lights[scene->light_count++] = light;
     }
 }
+void scene_add_mesh(Scene* scene, Mesh mesh) {
+    if (scene->mesh_count < MAX_MESHES) {
+        scene->meshes[scene->mesh_count++] = mesh;
+    }
+}
 
 int scene_closest_hit(Scene* scene, Ray ray, double t_min, double t_max, Hit* hit) {
     Hit temp_hit;
     int hit_anything = 0;
     double closest_so_far = t_max;
 
+    // Check sphere intersections
     for (int i = 0; i < scene->sphere_count; i++) {
         if (sphere_intersect(&scene->spheres[i], ray, t_min, closest_so_far, &temp_hit)) {
             hit_anything = 1;
@@ -36,12 +70,89 @@ int scene_closest_hit(Scene* scene, Ray ray, double t_min, double t_max, Hit* hi
         }
     }
 
+    // Check mesh intersections
+    for (int i = 0; i < scene->mesh_count; i++) {
+        if (mesh_intersect(&scene->meshes[i], ray, t_min, closest_so_far, &temp_hit)) {
+            hit_anything = 1;
+            closest_so_far = temp_hit.t;
+            temp_hit.mesh = (struct Mesh*)&scene->meshes[i];  // Store mesh pointer for material properties
+            *hit = temp_hit;
+        }
+    }
+
     return hit_anything;
+}
+
+static Ray generate_defocus_ray(Scene* scene, Ray original_ray, Vector3 focal_point) {
+    // Generate random point in aperture disk
+    double r = scene->aperture * sqrt((double)rand() / RAND_MAX);
+    double theta = 2.0 * M_PI * ((double)rand() / RAND_MAX);
+    
+    Vector3 offset = vector_create(
+        r * cos(theta),
+        r * sin(theta),
+        0.0
+    );
+    
+    Vector3 origin = vector_add(original_ray.origin, offset);
+    Vector3 direction = vector_normalize(vector_subtract(focal_point, origin));
+    
+    return ray_create(origin, direction);
+}
+
+static Vector3 trace_chromatic(Scene* scene, Ray ray, int depth, double wavelength_offset) {
+    Hit hit;
+    if (depth <= 0) return vector_create(0, 0, 0);
+    
+    // Adjust IOR based on wavelength for chromatic aberration
+    if (wavelength_offset != 0.0) {
+        ray.wavelength_offset = wavelength_offset;
+    }
+
+    if (scene_closest_hit(scene, ray, 0.001, DBL_MAX, &hit)) {
+        Vector3 color = vector_create(0, 0, 0);
+        
+        // Adjust IOR for chromatic aberration
+        if (hit.sphere) {
+            double wavelength_ior = hit.sphere->fresnel_ior + 
+                (wavelength_offset * hit.sphere->dispersion);
+            
+            // Calculate refraction
+            Vector3 view_dir = vector_normalize(vector_multiply(ray.direction, -1.0));
+            double cos_theta = vector_dot(view_dir, hit.normal);
+            double ior_ratio = cos_theta > 0 ? 1.0 / wavelength_ior : wavelength_ior;
+            
+            Vector3 refracted = vector_multiply(ray.direction, ior_ratio);
+            Ray refract_ray = ray_create(hit.point, refracted);
+            color = scene_trace(scene, refract_ray, depth - 1);
+        }
+        
+        return color;
+    }
+    
+    return scene->background_color;
 }
 
 Vector3 scene_trace(Scene* scene, Ray ray, int depth) {
     Hit hit;
     if (depth <= 0) return vector_create(0, 0, 0);
+    
+    // For transparent objects, trace different wavelengths
+    Vector3 color = vector_create(0, 0, 0);
+    if (depth == MAX_DEPTH) {  // Only do chromatic aberration on primary rays
+        color.x = trace_chromatic(scene, ray, depth, 0.03).x;  // Red wavelength (increased separation)
+        color.y = trace_chromatic(scene, ray, depth, 0.0).y;   // Green wavelength
+        color.z = trace_chromatic(scene, ray, depth, -0.03).z; // Blue wavelength (increased separation)
+        return color;
+    }
+
+    // Calculate focal point for depth of field
+    Vector3 focal_point = ray_point_at(ray, scene->focal_distance);
+    
+    // If aperture is significant, use depth of field
+    if (scene->aperture > 0.001) {
+        ray = generate_defocus_ray(scene, ray, focal_point);
+    }
 
     if (scene_closest_hit(scene, ray, 0.001, DBL_MAX, &hit)) {
         Vector3 color = vector_create(0, 0, 0);
@@ -49,25 +160,74 @@ Vector3 scene_trace(Scene* scene, Ray ray, int depth) {
         // Calculate lighting
         for (int i = 0; i < scene->light_count; i++) {
             Light light = scene->lights[i];
-            Vector3 light_dir = vector_normalize(vector_subtract(light.position, hit.point));
+            const int shadow_samples = 16;  // Increased number of samples for softer shadows
+            Vector3 light_contribution = vector_create(0, 0, 0);
             
-            // Shadow ray
-            Ray shadow_ray = ray_create(hit.point, light_dir);
-            Hit shadow_hit;
-            double light_distance = vector_length(vector_subtract(light.position, hit.point));
-            
-            if (!scene_closest_hit(scene, shadow_ray, 0.001, light_distance, &shadow_hit)) {
-                double diff = fmax(0.0, vector_dot(hit.normal, light_dir));
-                color = vector_add(color, vector_multiply(vector_multiply_vec(hit.sphere->color, light.color), diff * light.intensity));
+            for (int sample = 0; sample < shadow_samples; sample++) {
+                Vector3 light_pos = light_random_position(light);
+                Vector3 light_dir = vector_normalize(vector_subtract(light_pos, hit.point));
+                
+                // Shadow ray
+                Ray shadow_ray = ray_create(hit.point, light_dir);
+                Hit shadow_hit;
+                double light_distance = vector_length(vector_subtract(light_pos, hit.point));
+                
+                if (!scene_closest_hit(scene, shadow_ray, 0.001, light_distance, &shadow_hit)) {
+                    // Calculate diffuse component with surface normal
+                    double diff = fmax(0.0, vector_dot(hit.normal, light_dir));
+                    
+                    // Get texture color if available
+                    Vector3 surface_color = hit.sphere->color;
+                    if (hit.sphere->color_texture) {
+                        Vector2 tex_coord = calculate_sphere_uv(hit.point, hit.sphere->center, hit.sphere->texture_scale);
+                        surface_color = vector_multiply_vec(surface_color, sample_texture(tex_coord, hit.sphere->color_texture));
+                    }
+                    
+                    // Calculate specular component with glossiness
+                    Vector3 view_dir = vector_normalize(vector_multiply(ray.direction, -1));
+                    Vector3 reflect_dir = vector_reflect(vector_multiply(light_dir, -1), hit.normal);
+                    double gloss_power = 2.0 + hit.sphere->glossiness * 126.0; // Map glossiness [0,1] to [2,128]
+                    double spec = pow(fmax(vector_dot(view_dir, reflect_dir), 0.0), gloss_power);
+                    
+                    // Combine diffuse and specular components
+                    Vector3 diffuse = vector_multiply_vec(surface_color, light.color);
+                    Vector3 specular = vector_multiply(light.color, hit.sphere->glossiness * spec);
+                    Vector3 sample_contribution = vector_multiply(vector_add(diffuse, specular), diff * light.intensity);
+                    light_contribution = vector_add(light_contribution, sample_contribution);
+                }
             }
+            // Average the light contributions from all samples
+            light_contribution = vector_divide(light_contribution, shadow_samples);
+            color = vector_add(color, light_contribution);
         }
 
-        // Reflection
-        if (hit.sphere->reflectivity > 0 && depth > 0) {
-            Vector3 reflected = vector_reflect(ray.direction, hit.normal);
-            Ray reflect_ray = ray_create(hit.point, reflected);
-            Vector3 reflect_color = scene_trace(scene, reflect_ray, depth - 1);
-            color = vector_add(color, vector_multiply(reflect_color, hit.sphere->reflectivity));
+        // Calculate Fresnel reflection using Schlick's approximation
+        if (depth > 0) {
+            Vector3 view_dir = vector_normalize(vector_multiply(ray.direction, -1.0));
+            double cos_theta = fabs(vector_dot(view_dir, hit.normal));
+            
+            // Calculate physically accurate Fresnel term using polarization
+            double r0 = (hit.sphere->fresnel_ior - 1.0) / (hit.sphere->fresnel_ior + 1.0);
+            r0 = r0 * r0;
+            
+            // Compute roughness-adjusted Fresnel factor
+            double roughness_factor = hit.sphere->roughness * hit.sphere->roughness;
+            double fresnel_factor = r0 + (1.0 - r0) * pow(1.0 - cos_theta, 5.0) * hit.sphere->fresnel_power;
+            
+            // Adjust for metallic surfaces
+            if (hit.sphere->metallic > 0.0) {
+                fresnel_factor = fresnel_factor * (1.0 - roughness_factor) + hit.sphere->metallic * roughness_factor;
+            }
+            
+            // Blend with material's base reflectivity
+            double final_reflectivity = hit.sphere->reflectivity * fresnel_factor;
+            
+            if (final_reflectivity > 0.0) {
+                Vector3 reflected = vector_reflect(ray.direction, hit.normal);
+                Ray reflect_ray = ray_create(hit.point, reflected);
+                Vector3 reflect_color = scene_trace(scene, reflect_ray, depth - 1);
+                color = vector_add(color, vector_multiply(reflect_color, final_reflectivity));
+            }
         }
 
         return color;
@@ -75,3 +235,4 @@ Vector3 scene_trace(Scene* scene, Ray ray, int depth) {
 
     return scene->background_color;
 }
+

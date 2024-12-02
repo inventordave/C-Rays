@@ -66,18 +66,42 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Initialize scene
+    // Initialize scene with depth of field parameters
     Scene scene = scene_create();
+    scene.aperture = 0.3;        // Further increased aperture size for more pronounced depth of field
+    scene.focal_distance = 6.0;   // Adjusted focal distance to focus on middle sphere
 
-    // Add spheres
-    scene_add_sphere(&scene, sphere_create(vector_create(0, 0, -5), 1.0, vector_create(1.0, 0.2, 0.2), 0.3));
-    scene_add_sphere(&scene, sphere_create(vector_create(2, 0, -6), 1.0, vector_create(0.2, 1.0, 0.2), 0.3));
-    scene_add_sphere(&scene, sphere_create(vector_create(-2, 0, -4), 1.0, vector_create(0.2, 0.2, 1.0), 0.3));
-    scene_add_sphere(&scene, sphere_create(vector_create(0, -101, -5), 100.0, vector_create(0.5, 0.5, 0.5), 0.1));
+    // Create spheres with advanced material properties
+    // Create a glass sphere with advanced optical properties
+    Sphere glass_sphere = sphere_create(vector_create(0, 0, -6), 1.0, vector_create(0.9, 0.9, 0.9), 0.8, 1.5, 1.0);
+    glass_sphere.glossiness = 1.0;      // Perfect reflection
+    glass_sphere.roughness = 0.05;      // Slightly rough surface
+    glass_sphere.metallic = 0.0;        // Non-metallic
+    glass_sphere.dispersion = 0.04;     // Strong chromatic aberration
+    
+    // Create a metallic sphere with physically-based properties
+    Sphere metal_sphere = sphere_create(vector_create(2, 0.5, -4), 0.7, vector_create(0.9, 0.8, 0.7), 0.9, 2.4, 0.8);
+    metal_sphere.glossiness = 0.8;      // Slightly rough metal
+    metal_sphere.roughness = 0.2;       // Polished metal surface
+    metal_sphere.metallic = 1.0;        // Fully metallic
+    metal_sphere.dispersion = 0.0;      // No dispersion for metals
+    
+    // Create a water sphere with realistic optical properties
+    Sphere water_sphere = sphere_create(vector_create(-2, -0.5, -8), 1.2, vector_create(0.7, 0.8, 0.9), 0.7, 1.33, 0.9);
+    water_sphere.glossiness = 0.6;      // Water-like glossiness
+    water_sphere.roughness = 0.1;       // Slight surface perturbation
+    water_sphere.metallic = 0.0;        // Non-metallic
+    water_sphere.dispersion = 0.02;     // Slight water dispersion
+    
+    scene_add_sphere(&scene, glass_sphere);  // Glass sphere at focal plane
+    scene_add_sphere(&scene, metal_sphere);  // Metal sphere in front
+    scene_add_sphere(&scene, water_sphere);  // Water sphere behind
+    scene_add_sphere(&scene, sphere_create(vector_create(0, -101, -5), 100.0, vector_create(0.5, 0.5, 0.5), 0.1, 1.0, 0.5)); // Ground plane
 
     // Add lights
-    scene_add_light(&scene, light_create(vector_create(5, 5, -5), vector_create(1, 1, 1), 1.0));
-    scene_add_light(&scene, light_create(vector_create(-5, 5, -5), vector_create(0.5, 0.5, 0.5), 0.5));
+    // Enhanced lighting setup for better shadows and reflections
+    scene_add_light(&scene, area_light_create(vector_create(5, 5, -5), vector_create(1, 0.95, 0.8), 1.2, 2.0));  // Main warm light
+    scene_add_light(&scene, area_light_create(vector_create(-5, 4, -3), vector_create(0.7, 0.8, 1.0), 0.8, 1.5));  // Fill cool light
 
     // Camera parameters
     Vector3 camera_pos = vector_create(0, 0, 1);
@@ -99,20 +123,29 @@ int main(int argc, char* argv[]) {
     for (int j = HEIGHT - 1; j >= 0; j--) {
         fprintf(stderr, "\rScanlines remaining: %d ", j);
         for (int i = 0; i < WIDTH; i++) {
-            double u = (double)i / (WIDTH - 1);
-            double v = (double)j / (HEIGHT - 1);
+            Vector3 color = vector_create(0, 0, 0);
+            const int samples_per_pixel = 16;  // Increased samples for better quality
 
-            Vector3 direction = vector_subtract(
-                vector_add(
-                    vector_add(lower_left_corner,
-                        vector_multiply(horizontal, u)),
-                    vector_multiply(vertical, v)
-                ),
-                camera_pos
-            );
+            // Anti-aliasing: Take multiple samples per pixel
+            for (int s = 0; s < samples_per_pixel; s++) {
+                double u = ((double)i + ((double)rand() / RAND_MAX)) / (WIDTH - 1);
+                double v = ((double)j + ((double)rand() / RAND_MAX)) / (HEIGHT - 1);
 
-            Ray ray = ray_create(camera_pos, direction);
-            Vector3 color = scene_trace(&scene, ray, MAX_DEPTH);
+                Vector3 direction = vector_subtract(
+                    vector_add(
+                        vector_add(lower_left_corner,
+                            vector_multiply(horizontal, u)),
+                        vector_multiply(vertical, v)
+                    ),
+                    camera_pos
+                );
+
+                Ray ray = ray_create(camera_pos, direction);
+                color = vector_add(color, scene_trace(&scene, ray, MAX_DEPTH));
+            }
+            
+            // Average the color samples
+            color = vector_divide(color, samples_per_pixel);
             
             if (format == FORMAT_PPM) {
                 write_color_ppm(fp, color);

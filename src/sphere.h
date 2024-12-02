@@ -1,24 +1,32 @@
 #ifndef SPHERE_H
 #define SPHERE_H
 
-#include "vector.h"
+#include "common.h"
 #include "ray.h"
+#include <stddef.h>
 
-typedef struct {
+// Sphere structure definition
+typedef struct Sphere {
     Vector3 center;
     double radius;
     Vector3 color;
     double reflectivity;
+    double fresnel_ior;    // Index of Refraction for Fresnel calculations
+    double fresnel_power;  // Controls strength of Fresnel effect
+    double dispersion;     // Controls chromatic aberration strength
+    double glossiness;     // Controls the sharpness of reflections (0-1)
+    double roughness;      // Surface roughness for microfacet BRDF
+    double metallic;       // Metallic factor for PBR
+    Texture* color_texture;// Color texture map
+    double texture_scale;  // Texture tiling scale
 } Sphere;
 
-typedef struct {
-    double t;
-    Vector3 point;
-    Vector3 normal;
-    Sphere* sphere;
-} Hit;
+// Function declarations
+Vector3 sample_texture(Vector2 tex_coord, Texture* texture);
+Vector2 calculate_sphere_uv(Vector3 point, Vector3 center, double scale);
 
-Sphere sphere_create(Vector3 center, double radius, Vector3 color, double reflectivity);
-int sphere_intersect(Sphere* sphere, Ray ray, double t_min, double t_max, Hit* hit);
+struct Sphere sphere_create(Vector3 center, double radius, Vector3 color, double reflectivity, 
+                          double fresnel_ior, double fresnel_power);
+int sphere_intersect(struct Sphere* sphere, Ray ray, double t_min, double t_max, Hit* hit);
 
 #endif
