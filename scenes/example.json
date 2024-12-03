@@ -1,0 +1,63 @@
+{
+    "camera": {
+        "aperture": 0.3,
+        "focal_distance": 6.0
+    },
+    "spheres": [
+        {
+            "center": {"x": 0, "y": 0, "z": -6},
+            "radius": 1.0,
+            "color": {"x": 0.9, "y": 0.9, "z": 0.9},
+            "reflectivity": 0.8,
+            "fresnel_ior": 1.5,
+            "fresnel_power": 1.0,
+            "texture": {
+                "path": "textures/glass.png"
+            }
+        },
+        {
+            "center": {"x": 2, "y": 0.5, "z": -4},
+            "radius": 0.7,
+            "color": {"x": 0.9, "y": 0.8, "z": 0.7},
+            "reflectivity": 0.9,
+            "fresnel_ior": 2.4,
+            "fresnel_power": 0.8
+        }
+    ],
+    "lights": [
+        {
+            "type": "area",
+            "position": {"x": 5, "y": 5, "z": -5},
+            "color": {"x": 1, "y": 0.95, "z": 0.8},
+            "intensity": 1.2,
+            "radius": 2.0
+        },
+        {
+            "type": "area",
+            "position": {"x": -5, "y": 4, "z": -3},
+            "color": {"x": 0.7, "y": 0.8, "z": 1.0},
+            "intensity": 0.8,
+            "radius": 1.5
+        }
+    ],
+    "animations": {
+        "spheres": [
+            {
+                "keyframes": [
+                    {
+                        "time": 0.0,
+                        "position": {"x": 2.0, "y": 0, "z": -6.0},
+                        "rotation": {"x": 0, "y": 0, "z": 0},
+                        "scale": {"x": 1, "y": 1, "z": 1}
+                    },
+                    {
+                        "time": 2.0,
+                        "position": {"x": -2.0, "y": 0, "z": -6.0},
+                        "rotation": {"x": 0, "y": 6.28, "z": 0},
+                        "scale": {"x": 1, "y": 1, "z": 1}
+                    }
+                ]
+            }
+        ]
+    }
+}

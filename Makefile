@@ -1,7 +1,7 @@
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra
-LDFLAGS = -lm
+CFLAGS = -Wall -Wextra `pkg-config --cflags json-c`
+LDFLAGS = -lm `pkg-config --libs json-c`
 
 # Directories
 SRC_DIR = src

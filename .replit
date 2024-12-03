@@ -1,4 +1,4 @@
-modules = ["C"]
+modules = ["C", "c"]
 [workflows]
 runButton = "Project"
 

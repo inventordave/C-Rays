@@ -87,64 +87,88 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Initialize scene with depth of field parameters
-    Scene scene = scene_create();
-    scene.aperture = 0.3;        // Further increased aperture size for more pronounced depth of field
-    scene.focal_distance = 6.0;   // Adjusted focal distance to focus on middle sphere
-    scene.animation_state = animation_state_create(frame_rate);
-    scene.animation_state.current_frame = start_frame;
-
-    // Setup animation track for glass sphere
-    AnimationTrack* glass_sphere_track = animation_track_create();
-    // Create keyframes for circular motion
-    for (int i = 0; i <= 60; i++) {
-        double angle = (i / 60.0) * 2.0 * M_PI;  // Full circle over 60 frames
-        double x = 2.0 * cos(angle);  // Radius of 2
-        double z = -6.0 + 2.0 * sin(angle);  // Center at z = -6
-        
-        Keyframe keyframe = {
-            .time = i / 30.0,  // 30 FPS
-            .position = vector_create(x, 0, z),
-            .rotation = vector_create(0, angle, 0),
-            .scale = vector_create(1, 1, 1),
-            .velocity = vector_create(-2.0 * sin(angle), 0, 2.0 * cos(angle))  // Tangential velocity
-        };
-        animation_track_add_keyframe(glass_sphere_track, keyframe);
+    // Load scene from configuration file or create default scene
+    Scene* scene = NULL;
+    const char* config_file = NULL;
+    
+    // Check for scene configuration file in arguments
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--scene") == 0 && i + 1 < argc) {
+            config_file = argv[i + 1];
+            i++;
+        }
     }
+    
+    if (config_file) {
+        scene = load_scene_from_config(config_file);
+        if (!scene) {
+            fprintf(stderr, "Error: Failed to load scene from config file\n");
+            return 1;
+        }
+    } else {
+        scene = malloc(sizeof(Scene));
+        *scene = scene_create();
+        scene->aperture = 0.3;
+        scene->focal_distance = 6.0;
+    }
+    
+    scene->animation_state = animation_state_create(frame_rate);
+    scene->animation_state.current_frame = start_frame;
 
-    // Create spheres with advanced material properties
-    // Create a glass sphere with advanced optical properties
-    Sphere glass_sphere = sphere_create(vector_create(0, 0, -6), 1.0, vector_create(0.9, 0.9, 0.9), 0.8, 1.5, 1.0);
-    glass_sphere.glossiness = 1.0;      // Perfect reflection
-    glass_sphere.roughness = 0.05;      // Slightly rough surface
-    glass_sphere.metallic = 0.0;        // Non-metallic
-    glass_sphere.dispersion = 0.04;     // Strong chromatic aberration
-    
-    // Create a metallic sphere with physically-based properties
-    Sphere metal_sphere = sphere_create(vector_create(2, 0.5, -4), 0.7, vector_create(0.9, 0.8, 0.7), 0.9, 2.4, 0.8);
-    metal_sphere.glossiness = 0.8;      // Slightly rough metal
-    metal_sphere.roughness = 0.2;       // Polished metal surface
-    metal_sphere.metallic = 1.0;        // Fully metallic
-    metal_sphere.dispersion = 0.0;      // No dispersion for metals
-    
-    // Create a water sphere with realistic optical properties
-    Sphere water_sphere = sphere_create(vector_create(-2, -0.5, -8), 1.2, vector_create(0.7, 0.8, 0.9), 0.7, 1.33, 0.9);
-    water_sphere.glossiness = 0.6;      // Water-like glossiness
-    water_sphere.roughness = 0.1;       // Slight surface perturbation
-    water_sphere.metallic = 0.0;        // Non-metallic
-    water_sphere.dispersion = 0.02;     // Slight water dispersion
-    
-    scene_add_sphere(&scene, glass_sphere);  // Glass sphere at focal plane
-    scene.sphere_animations[0] = glass_sphere_track;  // Assign animation track to glass sphere
-    scene.motion_blur_intensity = 0.5;  // Enable motion blur
-    scene_add_sphere(&scene, metal_sphere);  // Metal sphere in front
-    scene_add_sphere(&scene, water_sphere);  // Water sphere behind
-    scene_add_sphere(&scene, sphere_create(vector_create(0, -101, -5), 100.0, vector_create(0.5, 0.5, 0.5), 0.1, 1.0, 0.5)); // Ground plane
+    // If no config file was provided, set up default scene
+    if (!config_file) {
+        // Setup animation track for glass sphere
+        AnimationTrack* glass_sphere_track = animation_track_create();
+        // Create keyframes for circular motion
+        for (int i = 0; i <= 60; i++) {
+            double angle = (i / 60.0) * 2.0 * M_PI;  // Full circle over 60 frames
+            double x = 2.0 * cos(angle);  // Radius of 2
+            double z = -6.0 + 2.0 * sin(angle);  // Center at z = -6
+            
+            Keyframe keyframe = {
+                .time = i / 30.0,  // 30 FPS
+                .position = vector_create(x, 0, z),
+                .rotation = vector_create(0, angle, 0),
+                .scale = vector_create(1, 1, 1),
+                .velocity = vector_create(-2.0 * sin(angle), 0, 2.0 * cos(angle))  // Tangential velocity
+            };
+            animation_track_add_keyframe(glass_sphere_track, keyframe);
+        }
 
-    // Add lights
-    // Enhanced lighting setup for better shadows and reflections
-    scene_add_light(&scene, area_light_create(vector_create(5, 5, -5), vector_create(1, 0.95, 0.8), 1.2, 2.0));  // Main warm light
-    scene_add_light(&scene, area_light_create(vector_create(-5, 4, -3), vector_create(0.7, 0.8, 1.0), 0.8, 1.5));  // Fill cool light
+        // Create spheres with advanced material properties
+        // Create a glass sphere with advanced optical properties
+        Sphere glass_sphere = sphere_create(vector_create(0, 0, -6), 1.0, vector_create(0.9, 0.9, 0.9), 0.8, 1.5, 1.0);
+        glass_sphere.glossiness = 1.0;      // Perfect reflection
+        glass_sphere.roughness = 0.05;      // Slightly rough surface
+        glass_sphere.metallic = 0.0;        // Non-metallic
+        glass_sphere.dispersion = 0.04;     // Strong chromatic aberration
+        
+        // Create a metallic sphere with physically-based properties
+        Sphere metal_sphere = sphere_create(vector_create(2, 0.5, -4), 0.7, vector_create(0.9, 0.8, 0.7), 0.9, 2.4, 0.8);
+        metal_sphere.glossiness = 0.8;      // Slightly rough metal
+        metal_sphere.roughness = 0.2;       // Polished metal surface
+        metal_sphere.metallic = 1.0;        // Fully metallic
+        metal_sphere.dispersion = 0.0;      // No dispersion for metals
+        
+        // Create a water sphere with realistic optical properties
+        Sphere water_sphere = sphere_create(vector_create(-2, -0.5, -8), 1.2, vector_create(0.7, 0.8, 0.9), 0.7, 1.33, 0.9);
+        water_sphere.glossiness = 0.6;      // Water-like glossiness
+        water_sphere.roughness = 0.1;       // Slight surface perturbation
+        water_sphere.metallic = 0.0;        // Non-metallic
+        water_sphere.dispersion = 0.02;     // Slight water dispersion
+        
+        scene_add_sphere(scene, glass_sphere);  // Glass sphere at focal plane
+        scene->sphere_animations[0] = glass_sphere_track;  // Assign animation track to glass sphere
+        scene->motion_blur_intensity = 0.5;  // Enable motion blur
+        scene_add_sphere(scene, metal_sphere);  // Metal sphere in front
+        scene_add_sphere(scene, water_sphere);  // Water sphere behind
+        scene_add_sphere(scene, sphere_create(vector_create(0, -101, -5), 100.0, vector_create(0.5, 0.5, 0.5), 0.1, 1.0, 0.5)); // Ground plane
+
+        // Add lights
+        // Enhanced lighting setup for better shadows and reflections
+        scene_add_light(scene, area_light_create(vector_create(5, 5, -5), vector_create(1, 0.95, 0.8), 1.2, 2.0));  // Main warm light
+        scene_add_light(scene, area_light_create(vector_create(-5, 4, -3), vector_create(0.7, 0.8, 1.0), 0.8, 1.5));  // Fill cool light
+    }
 
     // Camera parameters
     Vector3 camera_pos = vector_create(0, 0, 1);
@@ -208,7 +232,7 @@ int main(int argc, char* argv[]) {
 
                     Ray ray = ray_create(camera_pos, direction);
                     ray.time = scene.animation_state.current_time + time_offset;
-                    color = vector_add(color, scene_trace(&scene, ray, MAX_DEPTH));
+                    color = vector_add(color, scene_trace(scene, ray, MAX_DEPTH));
                 }
             }
             
