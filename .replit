@@ -23,6 +23,10 @@ args = "Raytracer PPM"
 task = "workflow.run"
 args = "Raytracer PNG"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Scene Config Test"
+
 [[workflows.workflow]]
 name = "Raytracer"
 author = "agent"
@@ -78,6 +82,20 @@ task = "packager.installForAll"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "gcc src/*.c -o raytracer -lm && ./raytracer --format png"
+
+[[workflows.workflow]]
+name = "Scene Config Test"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "make clean && make && ./build/raytracer --scene scenes/example.json --format png && ./build/raytracer --scene scenes/example.xml --format png"
 
 [deployment]
 run = ["sh", "-c", "gcc src/*.c -o raytracer -lm && ./raytracer"]
