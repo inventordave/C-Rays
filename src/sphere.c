@@ -192,7 +192,7 @@ int sphere_intersect(Sphere* sphere, Ray ray, double t_min, double t_max, Hit* h
 }
 
 // Calculate UV coordinates for sphere texture mapping
-Vector2 calculate_sphere_uv(Vector3 point, Vector3 center, double scale) {
+Vector2Double calculate_sphere_uv(Vector3 point, Vector3 center, double scale) {
     // Convert point to sphere-local coordinates
     Vector3 local = vector_subtract(point, center);
     local = vector_multiply(local, scale);
