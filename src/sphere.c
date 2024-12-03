@@ -1,99 +1,7 @@
 #include "sphere.h"
 #include <math.h>
 
-Sphere sphere_create(Vector3 center, double radius, Vector3 color, double reflectivity,
-                    double fresnel_ior, double fresnel_power) {
-    Sphere s = {
-        .center = center,
-        .radius = radius,
-        .color = color,
-        .reflectivity = reflectivity,
-        .fresnel_ior = fresnel_ior,
-        .fresnel_power = fresnel_power,
-        .dispersion = 0.02,    // Default chromatic aberration strength
-        .glossiness = 0.5,     // Default glossiness
-        .roughness = 0.5,      // Default roughness
-        .metallic = 0.0,       // Default non-metallic
-        .color_texture = NULL, // No texture by default
-        .texture_scale = 1.0   // Default texture scale
-    };
-    return s;
-}
-
-Vector3 sample_texture(Vector2 tex_coord, Texture* texture) {
-    if (!texture || !texture->data) return vector_create(1, 1, 1);
-    
-    // Calculate texture coordinates in pixels
-    int x = (int)((tex_coord.u * texture->width)) % texture->width;
-    int y = (int)((tex_coord.v * texture->height)) % texture->height;
-    
-    // Ensure positive coordinates
-    x = (x + texture->width) % texture->width;
-    y = (y + texture->height) % texture->height;
-    
-    // Get color from texture
-    int idx = (y * texture->width + x) * texture->channels;
-    return vector_create(
-        texture->data[idx] / 255.0,
-        texture->data[idx + 1] / 255.0,
-        texture->data[idx + 2] / 255.0
-    );
-}
-
-Vector2 calculate_sphere_uv(Vector3 point, Vector3 center, double scale) {
-    Vector3 normalized = vector_normalize(vector_subtract(point, center));
-    Vector2 tex_coord = {
-        0.5 + atan2(normalized.z, normalized.x) / (2.0 * M_PI),
-        0.5 - asin(normalized.y) / M_PI
-    };
-    
-    // Apply texture scaling
-    tex_coord.u *= scale;
-    tex_coord.v *= scale;
-    
-    return tex_coord;
-}
-
-int sphere_intersect(struct Sphere* sphere, Ray ray, double t_min, double t_max, Hit* hit) {
-    Vector3 oc = vector_subtract(ray.origin, sphere->center);
-    double a = vector_dot(ray.direction, ray.direction);
-    double b = vector_dot(oc, ray.direction);
-    double c = vector_dot(oc, oc) - sphere->radius * sphere->radius;
-    double discriminant = b*b - a*c;
-
-    if (discriminant > 0) {
-        double temp = (-b - sqrt(discriminant)) / a;
-        if (temp < t_max && temp > t_min) {
-            hit->t = temp;
-            hit->point = ray_point_at(ray, temp);
-            hit->normal = vector_divide(vector_subtract(hit->point, sphere->center), sphere->radius);
-            
-            // Calculate texture coordinates using sphere's texture scale
-            hit->tex_coord = calculate_sphere_uv(hit->point, sphere->center, sphere->texture_scale);
-            
-            // Set sphere reference and type
-            hit->sphere = sphere;
-            hit->is_mesh = 0;
-            return 1;
-        }
-        temp = (-b + sqrt(discriminant)) / a;
-        if (temp < t_max && temp > t_min) {
-            hit->t = temp;
-            hit->point = ray_point_at(ray, temp);
-            hit->normal = vector_divide(vector_subtract(hit->point, sphere->center), sphere->radius);
-            
-            // Calculate texture coordinates using sphere's texture scale
-            hit->tex_coord = calculate_sphere_uv(hit->point, sphere->center, sphere->texture_scale);
-            
-            // Set sphere reference and type
-            hit->sphere = sphere;
-            hit->is_mesh = 0;
-            return 1;
-        }
-    }
-    return 0;
-}
-// Perlin Noise Implementation
+// Pattern related functions and implementations
 static double fade(double t) {
     return t * t * t * (t * (t * 6 - 15) + 10);
 }
@@ -123,7 +31,6 @@ static double perlin_noise(Vector3 point, double scale) {
     double v = fade(point.y);
     double w = fade(point.z);
 
-    static const int p[512] = { /* Permutation table */ };
     static const int permutation[256] = {
         151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,
         140,36,103,30,69,142,8,99,37,240,21,10,23,190,6,148,
@@ -143,6 +50,7 @@ static double perlin_noise(Vector3 point, double scale) {
         222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
     };
 
+    static int p[512];
     for (int i = 0; i < 256; i++) p[256 + i] = p[i] = permutation[i];
 
     int A = p[X] + Y;
@@ -162,29 +70,41 @@ static double perlin_noise(Vector3 point, double scale) {
                                   grad(p[BB + 1], point.x - 1, point.y - 1, point.z - 1))));
 }
 
-// Pattern generation functions
+// Pattern generation functions with proper Vector3 return types
 static Vector3 perlin_noise_pattern(Vector3 point, Pattern pattern) {
     double noise = perlin_noise(point, pattern.scale);
     noise = (noise + 1.0) * 0.5; // Map to [0,1]
-    return vector_lerp(pattern.color1, pattern.color2, noise);
+    Vector3 result = vector_add(
+        vector_multiply(pattern.color1, 1.0 - noise),
+        vector_multiply(pattern.color2, noise)
+    );
+    return result;
 }
 
 static Vector3 marble_pattern(Vector3 point, Pattern pattern) {
     double noise = perlin_noise(point, pattern.scale);
     double marble = sin(point.x * pattern.scale + noise * 5.0) * 0.5 + 0.5;
-    return vector_lerp(pattern.color1, pattern.color2, marble);
+    Vector3 result = vector_add(
+        vector_multiply(pattern.color1, 1.0 - marble),
+        vector_multiply(pattern.color2, marble)
+    );
+    return result;
 }
 
 static Vector3 wood_pattern(Vector3 point, Pattern pattern) {
-    // Convert to cylindrical coordinates
     double r = sqrt(point.x * point.x + point.z * point.z);
     double noise = perlin_noise(point, pattern.scale * 0.5);
     double wood = fmod(r * pattern.scale + noise * 2.0, 1.0);
-    return vector_lerp(pattern.color1, pattern.color2, wood);
+    Vector3 result = vector_add(
+        vector_multiply(pattern.color1, 1.0 - wood),
+        vector_multiply(pattern.color2, wood)
+    );
+    return result;
 }
 
-// Function to compute pattern color based on type
+// Function to compute pattern color based on type with explicit fallthrough prevention
 Vector3 compute_pattern_color(Vector3 point, Pattern pattern) {
+    Vector3 result;
     switch (pattern.type) {
         case PATTERN_PERLIN_NOISE:
             return perlin_noise_pattern(point, pattern);
@@ -207,9 +127,67 @@ Vector3 compute_pattern_color(Vector3 point, Pattern pattern) {
         case PATTERN_GRADIENT: {
             double t = fmod(point.x * pattern.scale, 1.0);
             t = t < 0 ? t + 1.0 : t;
-            return vector_lerp(pattern.color1, pattern.color2, t);
+            Vector3 result = vector_add(
+                vector_multiply(pattern.color1, 1.0 - t),
+                vector_multiply(pattern.color2, t)
+            );
+            return result;
         }
         default:
             return pattern.color1;
     }
+}
+
+// Sphere intersection and creation functions
+Sphere sphere_create(Vector3 center, double radius, Vector3 color, double reflectivity,
+                    double fresnel_ior, double fresnel_power) {
+    Sphere sphere = {
+        .center = center,
+        .radius = radius,
+        .color = color,
+        .reflectivity = reflectivity,
+        .fresnel_ior = fresnel_ior,
+        .fresnel_power = fresnel_power,
+        .dispersion = 0.0,
+        .glossiness = 1.0,
+        .roughness = 0.0,
+        .metallic = 0.0,
+        .color_texture = NULL,
+        .texture_scale = 1.0,
+        .pattern = {
+            .type = PATTERN_SOLID,
+            .scale = 1.0,
+            .color1 = color,
+            .color2 = {0, 0, 0}
+        }
+    };
+    return sphere;
+}
+
+int sphere_intersect(Sphere* sphere, Ray ray, double t_min, double t_max, Hit* hit) {
+    Vector3 oc = vector_subtract(ray.origin, sphere->center);
+    double a = vector_dot(ray.direction, ray.direction);
+    double b = vector_dot(oc, ray.direction);
+    double c = vector_dot(oc, oc) - sphere->radius * sphere->radius;
+    double discriminant = b * b - a * c;
+
+    if (discriminant > 0) {
+        double temp = (-b - sqrt(discriminant)) / a;
+        if (temp < t_max && temp > t_min) {
+            hit->t = temp;
+            hit->point = ray_point_at(ray, hit->t);
+            hit->normal = vector_divide(vector_subtract(hit->point, sphere->center), sphere->radius);
+            hit->sphere = sphere;
+            return 1;
+        }
+        temp = (-b + sqrt(discriminant)) / a;
+        if (temp < t_max && temp > t_min) {
+            hit->t = temp;
+            hit->point = ray_point_at(ray, hit->t);
+            hit->normal = vector_divide(vector_subtract(hit->point, sphere->center), sphere->radius);
+            hit->sphere = sphere;
+            return 1;
+        }
+    }
+    return 0;
 }
