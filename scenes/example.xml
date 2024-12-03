@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scene>
+    <camera aperture="0.3" focal_distance="6.0"/>
+    <spheres>
+        <sphere radius="1.0" reflectivity="0.8" fresnel_ior="1.5" fresnel_power="1.0">
+            <center x="0" y="0" z="-6"/>
+            <color x="0.9" y="0.9" z="0.9"/>
+            <texture path="textures/glass.png"/>
+        </sphere>
+        <sphere radius="0.7" reflectivity="0.9" fresnel_ior="2.4" fresnel_power="0.8">
+            <center x="2" y="0.5" z="-4"/>
+            <color x="0.9" y="0.8" z="0.7"/>
+        </sphere>
+    </spheres>
+    <lights>
+        <light type="area" intensity="1.2" radius="2.0">
+            <position x="5" y="5" z="-5"/>
+            <color x="1" y="0.95" z="0.8"/>
+        </light>
+        <light type="area" intensity="0.8" radius="1.5">
+            <position x="-5" y="4" z="-3"/>
+            <color x="0.7" y="0.8" z="1.0"/>
+        </light>
+    </lights>
+    <animations>
+        <spheres>
+            <animation>
+                <keyframe time="0.0">
+                    <position x="2.0" y="0" z="-6.0"/>
+                    <rotation x="0" y="0" z="0"/>
+                    <scale x="1" y="1" z="1"/>
+                </keyframe>
+                <keyframe time="2.0">
+                    <position x="-2.0" y="0" z="-6.0"/>
+                    <rotation x="0" y="6.28" z="0"/>
+                    <scale x="1" y="1" z="1"/>
+                </keyframe>
+            </animation>
+        </spheres>
+    </animations>
+</scene>

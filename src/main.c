@@ -3,6 +3,7 @@
 #include <math.h>
 #include <string.h>
 #include "scene.h"
+#include "scene_config.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -190,12 +191,12 @@ int main(int argc, char* argv[]) {
     int total_frames = end_frame > 0 ? (end_frame - start_frame + 1) : 1;
     
     for (int frame = 0; frame < total_frames; frame++) {
-        scene.animation_state.current_frame = start_frame + frame;
-        scene.animation_state.current_time = scene.animation_state.current_frame / frame_rate;
+        scene->animation_state.current_frame = start_frame + frame;
+        scene->animation_state.current_time = scene->animation_state.current_frame / frame_rate;
         
         char frame_filename[256];
         if (format == FORMAT_PNG) {
-            snprintf(frame_filename, sizeof(frame_filename), output_file, scene.animation_state.current_frame);
+            snprintf(frame_filename, sizeof(frame_filename), output_file, scene->animation_state.current_frame);
         }
         
         fprintf(stderr, "\nRendering frame %d/%d\n", frame + 1, total_frames);
@@ -206,7 +207,7 @@ int main(int argc, char* argv[]) {
             for (int i = 0; i < WIDTH; i++) {
                 Vector3 color = vector_create(0, 0, 0);
                 const int samples_per_pixel = 4;   // Reduced samples for better performance
-                const int motion_samples = scene.motion_blur_intensity > 0 ? 4 : 1; // Reduced motion blur samples
+                const int motion_samples = scene->motion_blur_intensity > 0 ? 4 : 1; // Reduced motion blur samples
 
             // Anti-aliasing and motion blur sampling
             for (int s = 0; s < samples_per_pixel; s++) {
@@ -215,7 +216,7 @@ int main(int argc, char* argv[]) {
                     double time_offset = 0.0;
                     if (motion_samples > 1) {
                         time_offset = ((double)m / (motion_samples - 1) - 0.5) * 
-                                    scene.motion_blur_intensity * scene.animation_state.time_step;
+                                    scene->motion_blur_intensity * scene->animation_state.time_step;
                     }
                     
                     double u = ((double)i + ((double)rand() / RAND_MAX)) / (WIDTH - 1);
@@ -231,7 +232,7 @@ int main(int argc, char* argv[]) {
                     );
 
                     Ray ray = ray_create(camera_pos, direction);
-                    ray.time = scene.animation_state.current_time + time_offset;
+                    ray.time = scene->animation_state.current_time + time_offset;
                     color = vector_add(color, scene_trace(scene, ray, MAX_DEPTH));
                 }
             }
@@ -259,7 +260,7 @@ int main(int argc, char* argv[]) {
         }
         
         // Update animation state
-        animation_update_state(&scene.animation_state);
+        animation_update_state(&scene->animation_state);
     }
     
     if (pixels) {
