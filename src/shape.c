@@ -1,6 +1,7 @@
 #include "shape.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 #include "sphere.h"
 #include "aplib.h"
 #include <string.h>
@@ -107,21 +108,95 @@ static Vector3 shape_sphere_normal(Shape* shape, Vector3 point) {
 }
 
 static int shape_cylinder_intersect(Shape* shape, Ray ray, double t_min, double t_max, struct Hit* hit) {
-    // TODO: Implement proper cylinder intersection
-    return 0;
+    // Transform ray to cylinder's local space
+    Vector3 oc = vector_subtract(ray.origin, shape->properties.position);
+    
+    // Project ray onto XZ plane for infinite cylinder intersection
+    double a = ray.direction.x * ray.direction.x + ray.direction.z * ray.direction.z;
+    double b = 2.0 * (oc.x * ray.direction.x + oc.z * ray.direction.z);
+    double c = oc.x * oc.x + oc.z * oc.z - shape->properties.scale.x * shape->properties.scale.x;
+    
+    double discriminant = b * b - 4.0 * a * c;
+    if (discriminant < 0.0) return 0;
+    
+    double t = (-b - sqrt(discriminant)) / (2.0 * a);
+    if (t < t_min || t > t_max) {
+        t = (-b + sqrt(discriminant)) / (2.0 * a);
+        if (t < t_min || t > t_max) return 0;
+    }
+    
+    // Check cylinder height bounds
+    Vector3 intersection = ray_point_at(ray, t);
+    double height = intersection.y - shape->properties.position.y;
+    if (fabs(height) > shape->properties.scale.y) return 0;
+    
+    hit->t = t;
+    hit->point = intersection;
+    
+    // Calculate normal
+    Vector3 cp = vector_subtract(intersection, shape->properties.position);
+    cp.y = 0;  // Project to XZ plane
+    hit->normal = vector_normalize(cp);
+    
+    return 1;
 }
 
 static Vector3 shape_cylinder_normal(Shape* shape, Vector3 point) {
-    // TODO: Implement proper cylinder normal calculation
-    return vector_normalize(point);
+    Vector3 cp = vector_subtract(point, shape->properties.position);
+    cp.y = 0;  // Project to XZ plane for side normal
+    return vector_normalize(cp);
 }
 
 static int shape_cone_intersect(Shape* shape, Ray ray, double t_min, double t_max, struct Hit* hit) {
-    // TODO: Implement proper cone intersection
-    return 0;
+    Vector3 oc = vector_subtract(ray.origin, shape->properties.position);
+    double theta = atan(shape->properties.scale.x / shape->properties.scale.y); // Cone angle
+    double tan_theta = tan(theta);
+    double tan_theta2 = tan_theta * tan_theta;
+    
+    // Quadratic equation coefficients
+    double a = ray.direction.x * ray.direction.x + ray.direction.z * ray.direction.z 
+             - (ray.direction.y * ray.direction.y * tan_theta2);
+    double b = 2.0 * (oc.x * ray.direction.x + oc.z * ray.direction.z 
+             - (oc.y * ray.direction.y * tan_theta2));
+    double c = oc.x * oc.x + oc.z * oc.z - (oc.y * oc.y * tan_theta2);
+    
+    double discriminant = b * b - 4.0 * a * c;
+    if (discriminant < 0.0) return 0;
+    
+    // Find closest valid intersection
+    double t = (-b - sqrt(discriminant)) / (2.0 * a);
+    if (t < t_min || t > t_max) {
+        t = (-b + sqrt(discriminant)) / (2.0 * a);
+        if (t < t_min || t > t_max) return 0;
+    }
+    
+    // Check height bounds
+    Vector3 intersection = ray_point_at(ray, t);
+    double height = intersection.y - shape->properties.position.y;
+    if (height < 0 || height > shape->properties.scale.y) return 0;
+    
+    hit->t = t;
+    hit->point = intersection;
+    
+    // Calculate normal
+    Vector3 cp = vector_subtract(intersection, shape->properties.position);
+    double r = sqrt(cp.x * cp.x + cp.z * cp.z);
+    hit->normal = vector_normalize(vector_create(
+        cp.x,
+        -r * tan_theta,
+        cp.z
+    ));
+    
+    return 1;
 }
 
 static Vector3 shape_cone_normal(Shape* shape, Vector3 point) {
-    // TODO: Implement proper cone normal calculation
-    return vector_normalize(point);
+    Vector3 cp = vector_subtract(point, shape->properties.position);
+    double theta = atan(shape->properties.scale.x / shape->properties.scale.y);
+    double r = sqrt(cp.x * cp.x + cp.z * cp.z);
+    return vector_normalize(vector_create(
+        cp.x,
+        -r * tan(theta),
+        cp.z
+    ));
 }

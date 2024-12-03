@@ -7,25 +7,84 @@
 #include <stb/stb_image.h>
 
 Texture* scene_load_normal_map(Scene* scene, const char* filename) {
-    if (scene->normal_map_count >= MAX_NORMAL_MAPS) return NULL;
+    return scene_load_texture(scene, filename, TEXTURE_TYPE_NORMAL);
+}
+
+void scene_free_textures(Scene* scene) {
+    for (int i = 0; i < scene->texture_count; i++) {
+        if (scene->textures[i].data) {
+            stbi_image_free(scene->textures[i].data);
+        }
+    }
+    scene->texture_count = 0;
     
-    Texture* map = &scene->normal_maps[scene->normal_map_count];
-    map->data = stbi_load(filename, &map->width, &map->height, &map->channels, 3);
+    if (scene->environment_map && scene->environment_map->data) {
+        stbi_image_free(scene->environment_map->data);
+        scene->environment_map = NULL;
+    }
+}
+
+Texture* scene_load_texture(Scene* scene, const char* filename, int type) {
+    if (scene->texture_count >= MAX_TEXTURES) return NULL;
     
-    if (map->data) {
-        scene->normal_map_count++;
-        return map;
+    Texture* tex = &scene->textures[scene->texture_count];
+    tex->data = stbi_load(filename, &tex->width, &tex->height, &tex->channels, 3);
+    tex->type = type;
+    
+    if (tex->data) {
+        scene->texture_count++;
+        return tex;
     }
     return NULL;
 }
 
-void scene_free_normal_maps(Scene* scene) {
-    for (int i = 0; i < scene->normal_map_count; i++) {
-        if (scene->normal_maps[i].data) {
-            stbi_image_free(scene->normal_maps[i].data);
-        }
+Texture* scene_load_environment_map(Scene* scene, const char* filename) {
+    scene->environment_map = (Texture*)malloc(sizeof(Texture));
+    if (!scene->environment_map) return NULL;
+    
+    scene->environment_map->data = stbi_load(filename, 
+                                           &scene->environment_map->width,
+                                           &scene->environment_map->height,
+                                           &scene->environment_map->channels, 3);
+    
+    if (scene->environment_map->data) {
+        scene->environment_map->type = TEXTURE_TYPE_COLOR;
+        return scene->environment_map;
     }
-    scene->normal_map_count = 0;
+    
+    free(scene->environment_map);
+    scene->environment_map = NULL;
+    return NULL;
+}
+
+Vector3 sample_environment_map(Scene* scene, Vector3 direction) {
+    if (!scene->environment_map || !scene->environment_map->data) {
+        return scene->background_color;
+    }
+    
+    // Convert direction vector to spherical coordinates
+    double phi = atan2(direction.z, direction.x);
+    double theta = acos(fmin(1.0, fmax(-1.0, direction.y)));
+    
+    // Convert to UV coordinates
+    double u = (phi + M_PI) / (2.0 * M_PI);
+    double v = theta / M_PI;
+    
+    // Calculate pixel coordinates
+    int x = (int)(u * scene->environment_map->width) % scene->environment_map->width;
+    int y = (int)(v * scene->environment_map->height) % scene->environment_map->height;
+    
+    // Ensure positive coordinates
+    x = (x + scene->environment_map->width) % scene->environment_map->width;
+    y = (y + scene->environment_map->height) % scene->environment_map->height;
+    
+    // Sample environment map
+    int idx = (y * scene->environment_map->width + x) * scene->environment_map->channels;
+    return vector_create(
+        scene->environment_map->data[idx] / 255.0,
+        scene->environment_map->data[idx + 1] / 255.0,
+        scene->environment_map->data[idx + 2] / 255.0
+    );
 }
 Scene scene_create() {
     Scene scene = {
@@ -34,8 +93,22 @@ Scene scene_create() {
         .mesh_count = 0,
         .aperture = 0.1,        // Default aperture size
         .focal_distance = 5.0,  // Default focal distance
-        .background_color = {0.2, 0.2, 0.2}
+        .background_color = {0.2, 0.2, 0.2},
+        .animation_state = animation_state_create(30.0),  // Default 30 FPS
+        .motion_blur_intensity = 0.5  // Default motion blur intensity
     };
+    
+    // Initialize animation tracks
+    for (int i = 0; i < MAX_SPHERES; i++) {
+        scene.sphere_animations[i] = NULL;
+    }
+    for (int i = 0; i < MAX_MESHES; i++) {
+        scene.mesh_animations[i] = NULL;
+    }
+    for (int i = 0; i < MAX_LIGHTS; i++) {
+        scene.light_animations[i] = NULL;
+    }
+    
     return scene;
 }
 

@@ -36,16 +36,37 @@ void save_png(const char* filename, Vector3* pixels, int width, int height) {
 int main(int argc, char* argv[]) {
     OutputFormat format = FORMAT_PPM;
     const char* output_file = "output.ppm";
+    int start_frame = 0;
+    int end_frame = 0;  // 0 means render single frame
+    double frame_rate = 30.0;
 
     // Parse command line arguments
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--format") == 0 && i + 1 < argc) {
             if (strcmp(argv[i + 1], "png") == 0) {
                 format = FORMAT_PNG;
-                output_file = "output.png";
+                output_file = "frame_%04d.png";
             }
             i++;
         }
+        else if (strcmp(argv[i], "--start-frame") == 0 && i + 1 < argc) {
+            start_frame = atoi(argv[i + 1]);
+            i++;
+        }
+        else if (strcmp(argv[i], "--end-frame") == 0 && i + 1 < argc) {
+            end_frame = atoi(argv[i + 1]);
+            i++;
+        }
+        else if (strcmp(argv[i], "--fps") == 0 && i + 1 < argc) {
+            frame_rate = atof(argv[i + 1]);
+            i++;
+        }
+    }
+
+    // Validate animation parameters
+    if (end_frame > 0 && end_frame < start_frame) {
+        fprintf(stderr, "Error: end_frame must be greater than start_frame\n");
+        return 1;
     }
 
     FILE* fp = NULL;
@@ -70,6 +91,8 @@ int main(int argc, char* argv[]) {
     Scene scene = scene_create();
     scene.aperture = 0.3;        // Further increased aperture size for more pronounced depth of field
     scene.focal_distance = 6.0;   // Adjusted focal distance to focus on middle sphere
+    scene.animation_state = animation_state_create(frame_rate);
+    scene.animation_state.current_frame = start_frame;
 
     // Create spheres with advanced material properties
     // Create a glass sphere with advanced optical properties

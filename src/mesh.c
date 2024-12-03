@@ -1,6 +1,8 @@
 #include "mesh.h"
 #include <math.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 // Matrix operations
 typedef struct {
@@ -104,15 +106,106 @@ Mesh mesh_create(Vector3 position, Vector3 rotation, Vector3 scale, Vector3 colo
         .scale = scale,
         .color = color,
         .reflectivity = reflectivity,
-        .triangle_count = 0
+        .triangle_count = 0,
+        .vertex_count = 0,
+        .vertices = NULL,
+        .vertex_indices = NULL,
+        .use_smooth_shading = 0
     };
+    
+    // Allocate initial arrays
+    mesh.vertices = (Vector3*)malloc(MAX_VERTICES * sizeof(Vector3));
+    mesh.vertex_indices = (int*)malloc(MAX_TRIANGLES * 3 * sizeof(int));
+    
+    if (!mesh.vertices || !mesh.vertex_indices) {
+        fprintf(stderr, "Failed to allocate mesh buffers\n");
+        if (mesh.vertices) free(mesh.vertices);
+        if (mesh.vertex_indices) free(mesh.vertex_indices);
+        mesh.vertices = NULL;
+        mesh.vertex_indices = NULL;
+    }
+    
     return mesh;
+}
+
+void mesh_set_smooth_shading(Mesh* mesh, int enable) {
+    mesh->use_smooth_shading = enable;
+    for (int i = 0; i < mesh->triangle_count; i++) {
+        mesh->triangles[i].smooth_shading = enable;
+    }
+    if (enable) {
+        mesh_compute_smooth_normals(mesh);
+    }
 }
 
 void mesh_compute_triangle_normal(Triangle* triangle) {
     Vector3 edge1 = vector_subtract(triangle->vertices[1], triangle->vertices[0]);
     Vector3 edge2 = vector_subtract(triangle->vertices[2], triangle->vertices[0]);
-    triangle->normal = vector_normalize(vector_cross(edge1, edge2));
+    triangle->face_normal = vector_normalize(vector_cross(edge1, edge2));
+    
+    // Initialize vertex normals with face normal if smooth shading is not enabled
+    if (!triangle->smooth_shading) {
+        for (int i = 0; i < 3; i++) {
+            triangle->normals[i] = triangle->face_normal;
+        }
+    }
+}
+
+// Function to compute smooth vertex normals for a mesh
+void mesh_compute_smooth_normals(Mesh* mesh) {
+    // Initialize vertex normal accumulation arrays
+    Vector3* vertex_normals = (Vector3*)calloc(mesh->vertex_count, sizeof(Vector3));
+    double* vertex_weights = (double*)calloc(mesh->vertex_count, sizeof(double));
+    
+    // Accumulate weighted face normals for each vertex
+    for (int i = 0; i < mesh->triangle_count; i++) {
+        Triangle* tri = &mesh->triangles[i];
+        if (!tri->smooth_shading) continue;
+        
+        // Calculate edges
+        Vector3 edges[3] = {
+            vector_subtract(tri->vertices[1], tri->vertices[0]),
+            vector_subtract(tri->vertices[2], tri->vertices[1]),
+            vector_subtract(tri->vertices[0], tri->vertices[2])
+        };
+        
+        // Calculate angles at each vertex
+        double angles[3];
+        for (int j = 0; j < 3; j++) {
+            Vector3 e1 = vector_normalize(vector_multiply(edges[j], -1));
+            Vector3 e2 = vector_normalize(edges[(j + 2) % 3]);
+            angles[j] = acos(fmax(-1.0, fmin(1.0, vector_dot(e1, e2))));
+        }
+        
+        // Accumulate weighted normals
+        for (int j = 0; j < 3; j++) {
+            int vertex_index = mesh->vertex_indices[i * 3 + j];
+            Vector3 weighted_normal = vector_multiply(tri->face_normal, angles[j]);
+            vertex_normals[vertex_index] = vector_add(vertex_normals[vertex_index], weighted_normal);
+            vertex_weights[vertex_index] += angles[j];
+        }
+    }
+    
+    // Normalize accumulated weighted normals
+    for (int i = 0; i < mesh->vertex_count; i++) {
+        if (vertex_weights[i] > 0.0) {
+            vertex_normals[i] = vector_normalize(vertex_normals[i]);
+        }
+    }
+    
+    // Assign smooth normals to triangles
+    for (int i = 0; i < mesh->triangle_count; i++) {
+        Triangle* tri = &mesh->triangles[i];
+        if (tri->smooth_shading) {
+            for (int j = 0; j < 3; j++) {
+                int vertex_index = mesh->vertex_indices[i * 3 + j];
+                tri->normals[j] = vertex_normals[vertex_index];
+            }
+        }
+    }
+    
+    free(vertex_normals);
+    free(vertex_weights);
 }
 
 void mesh_add_triangle(Mesh* mesh, Vector3 v1, Vector3 v2, Vector3 v3) {
@@ -134,29 +227,70 @@ int ray_triangle_intersect(Ray ray, Triangle triangle, double t_min, double t_ma
     Vector3 pvec = vector_cross(ray.direction, edge2);
     double det = vector_dot(edge1, pvec);
     
-    // Backface culling
-    if (det < 0.000001) return 0;
+    // Two-sided triangle test
+    if (fabs(det) < 0.000001) return 0;
     
     double inv_det = 1.0 / det;
     
-    // Calculate u parameter
+    // Calculate barycentric coordinates
     Vector3 tvec = vector_subtract(ray.origin, triangle.vertices[0]);
     double u = vector_dot(tvec, pvec) * inv_det;
     if (u < 0.0 || u > 1.0) return 0;
     
-    // Calculate v parameter
     Vector3 qvec = vector_cross(tvec, edge1);
     double v = vector_dot(ray.direction, qvec) * inv_det;
     if (v < 0.0 || u + v > 1.0) return 0;
     
-    // Calculate t
     double t = vector_dot(edge2, qvec) * inv_det;
-    
     if (t < t_min || t > t_max) return 0;
     
+    // Calculate intersection point
     hit->t = t;
     hit->point = ray_point_at(ray, t);
-    hit->normal = triangle.normal;
+    
+    // Calculate barycentric coordinates
+    double w = 1.0 - u - v;
+    
+    if (triangle.smooth_shading) {
+        // Enhanced smooth normal interpolation with proper weighting
+        Vector3 interpolated_normal;
+        
+        // Calculate edge lengths for proper weighting
+        double len01 = vector_length(edge1);
+        double len02 = vector_length(edge2);
+        double len12 = vector_length(vector_subtract(triangle.vertices[2], triangle.vertices[1]));
+        
+        // Calculate weights based on edge lengths and barycentric coordinates
+        double weight0 = w * (len01 + len02);
+        double weight1 = u * (len01 + len12);
+        double weight2 = v * (len02 + len12);
+        double total_weight = weight0 + weight1 + weight2;
+        
+        if (total_weight > 0.0) {
+            weight0 /= total_weight;
+            weight1 /= total_weight;
+            weight2 /= total_weight;
+            
+            interpolated_normal = vector_add(
+                vector_add(
+                    vector_multiply(triangle.normals[0], weight0),
+                    vector_multiply(triangle.normals[1], weight1)
+                ),
+                vector_multiply(triangle.normals[2], weight2)
+            );
+        } else {
+            interpolated_normal = triangle.face_normal;
+        }
+        
+        hit->normal = vector_normalize(interpolated_normal);
+    } else {
+        hit->normal = triangle.face_normal;
+    }
+    
+    // Store barycentric coordinates for texture mapping
+    hit->tex_coord.u = u;
+    hit->tex_coord.v = v;
+    
     return 1;
 }
 

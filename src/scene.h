@@ -23,9 +23,18 @@ typedef struct Scene {
     int light_count;
     struct Mesh meshes[MAX_MESHES];
     int mesh_count;
-    Texture normal_maps[MAX_NORMAL_MAPS];
-    int normal_map_count;
+    #define MAX_TEXTURES 20
+    Texture textures[MAX_TEXTURES];
+    int texture_count;
+    Texture* environment_map;
     Vector3 background_color;
+    
+    // Animation support
+    AnimationState animation_state;
+    AnimationTrack* sphere_animations[MAX_SPHERES];
+    AnimationTrack* mesh_animations[MAX_MESHES];
+    AnimationTrack* light_animations[MAX_LIGHTS];
+    double motion_blur_intensity;  // Controls strength of motion blur effect
 } Scene;
 
 // Function declarations
@@ -35,7 +44,9 @@ void scene_add_light(Scene* scene, Light light);
 void scene_add_mesh(Scene* scene, struct Mesh mesh);
 Vector3 scene_trace(Scene* scene, Ray ray, int depth);
 int scene_closest_hit(Scene* scene, Ray ray, double t_min, double t_max, Hit* hit);
-Texture* scene_load_normal_map(Scene* scene, const char* filename);
-void scene_free_normal_maps(Scene* scene);
+Texture* scene_load_texture(Scene* scene, const char* filename, int type);
+Texture* scene_load_environment_map(Scene* scene, const char* filename);
+void scene_free_textures(Scene* scene);
+Vector3 sample_environment_map(Scene* scene, Vector3 direction);
 
 #endif
