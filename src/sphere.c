@@ -202,9 +202,9 @@ Vector2 calculate_sphere_uv(Vector3 point, Vector3 center, double scale) {
     double theta = acos(local.y / vector_length(local));
     
     // Convert to UV coordinates
-    Vector2 uv = {
-        .x = (phi + M_PI) / (2.0 * M_PI),  // U coordinate [0,1]
-        .y = theta / M_PI                   // V coordinate [0,1]
+    Vector2Double uv = {
+        .u = (phi + M_PI) / (2.0 * M_PI),  // U coordinate [0,1]
+        .v = theta / M_PI                   // V coordinate [0,1]
     };
     
     return uv;
@@ -217,8 +217,8 @@ Vector3 sample_texture(Vector2 tex_coord, Texture* texture) {
     }
     
     // Calculate pixel coordinates
-    int x = (int)(tex_coord.x * texture->width) % texture->width;
-    int y = (int)(tex_coord.y * texture->height) % texture->height;
+    int x = (int)(tex_coord.u * texture->width) % texture->width;
+    int y = (int)(tex_coord.v * texture->height) % texture->height;
     
     // Ensure positive coordinates
     x = (x + texture->width) % texture->width;

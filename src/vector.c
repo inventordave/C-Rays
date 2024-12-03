@@ -1,4 +1,5 @@
 #include "vector.h"
+#include "gc.h"
 #include "aplib.h"
 #include <math.h>
 #include <float.h>
@@ -73,7 +74,7 @@ char* vector3_string_dot(const Vector3String* a, const Vector3String* b) {
     Vector3 va = vector3_string_to_double(a);
     Vector3 vb = vector3_string_to_double(b);
     double result = aplib_vector_dot(va, vb);
-    char* str_result = (char*)malloc(64);
+    char* str_result = (char*)g(malloc(64));
     snprintf(str_result, 64, "%.20f", result);
     return str_result;
 }
@@ -88,7 +89,7 @@ Vector3String vector3_string_cross(const Vector3String* a, const Vector3String* 
 char* vector3_string_length(const Vector3String* v) {
     Vector3 vd = vector3_string_to_double(v);
     double result = aplib_vector_length(vd);
-    char* str_result = (char*)malloc(64);
+    char* str_result = (char*)g(malloc(64));
     snprintf(str_result, 64, "%.20f", result);
     return str_result;
 }
