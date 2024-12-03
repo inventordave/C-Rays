@@ -61,13 +61,13 @@ static double perlin_noise(Vector3 point, double scale) {
     int BB = p[B + 1] + Z;
 
     return lerp(w, lerp(v, lerp(u, grad(p[AA], point.x, point.y, point.z),
-                                  grad(p[BA], point.x - 1, point.y, point.z)),
-                           lerp(u, grad(p[AB], point.x, point.y - 1, point.z),
-                                  grad(p[BB], point.x - 1, point.y - 1, point.z))),
-                   lerp(v, lerp(u, grad(p[AA + 1], point.x, point.y, point.z - 1),
-                                  grad(p[BA + 1], point.x - 1, point.y, point.z - 1)),
-                           lerp(u, grad(p[AB + 1], point.x, point.y - 1, point.z - 1),
-                                  grad(p[BB + 1], point.x - 1, point.y - 1, point.z - 1))));
+                                grad(p[BA], point.x - 1, point.y, point.z)),
+                         lerp(u, grad(p[AB], point.x, point.y - 1, point.z),
+                                grad(p[BB], point.x - 1, point.y - 1, point.z))),
+                 lerp(v, lerp(u, grad(p[AA + 1], point.x, point.y, point.z - 1),
+                                grad(p[BA + 1], point.x - 1, point.y, point.z - 1)),
+                         lerp(u, grad(p[AB + 1], point.x, point.y - 1, point.z - 1),
+                                grad(p[BB + 1], point.x - 1, point.y - 1, point.z - 1))));
 }
 
 // Pattern generation functions with proper Vector3 return types
@@ -211,7 +211,7 @@ Vector2Double calculate_sphere_uv(Vector3 point, Vector3 center, double scale) {
 }
 
 // Sample color from texture at given UV coordinates
-Vector3 sample_texture(Vector2 tex_coord, Texture* texture) {
+Vector3 sample_texture(Vector2Double tex_coord, Texture* texture) {
     if (!texture || !texture->data) {
         return vector_create(1.0, 1.0, 1.0);  // Return white if no texture
     }
