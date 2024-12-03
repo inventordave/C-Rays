@@ -8,6 +8,20 @@ typedef enum {
 } PrecisionMode;
 
 typedef struct {
+    double u, v;
+} Vector2;
+
+// Vector2 operations
+Vector2 vector2_create(double u, double v);
+Vector2 vector2_add(Vector2 a, Vector2 b);
+Vector2 vector2_subtract(Vector2 a, Vector2 b);
+Vector2 vector2_multiply(Vector2 v, double scalar);
+Vector2 vector2_divide(Vector2 v, double scalar);
+double vector2_dot(Vector2 a, Vector2 b);
+double vector2_length(Vector2 v);
+Vector2 vector2_normalize(Vector2 v);
+
+typedef struct {
     double x, y, z;
 } Vector3;
 

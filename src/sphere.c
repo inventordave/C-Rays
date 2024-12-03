@@ -104,7 +104,6 @@ static Vector3 wood_pattern(Vector3 point, Pattern pattern) {
 
 // Function to compute pattern color based on type with explicit fallthrough prevention
 Vector3 compute_pattern_color(Vector3 point, Pattern pattern) {
-    Vector3 result;
     switch (pattern.type) {
         case PATTERN_PERLIN_NOISE:
             return perlin_noise_pattern(point, pattern);
