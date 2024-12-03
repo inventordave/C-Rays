@@ -94,6 +94,24 @@ int main(int argc, char* argv[]) {
     scene.animation_state = animation_state_create(frame_rate);
     scene.animation_state.current_frame = start_frame;
 
+    // Setup animation track for glass sphere
+    AnimationTrack* glass_sphere_track = animation_track_create();
+    // Create keyframes for circular motion
+    for (int i = 0; i <= 60; i++) {
+        double angle = (i / 60.0) * 2.0 * M_PI;  // Full circle over 60 frames
+        double x = 2.0 * cos(angle);  // Radius of 2
+        double z = -6.0 + 2.0 * sin(angle);  // Center at z = -6
+        
+        Keyframe keyframe = {
+            .time = i / 30.0,  // 30 FPS
+            .position = vector_create(x, 0, z),
+            .rotation = vector_create(0, angle, 0),
+            .scale = vector_create(1, 1, 1),
+            .velocity = vector_create(-2.0 * sin(angle), 0, 2.0 * cos(angle))  // Tangential velocity
+        };
+        animation_track_add_keyframe(glass_sphere_track, keyframe);
+    }
+
     // Create spheres with advanced material properties
     // Create a glass sphere with advanced optical properties
     Sphere glass_sphere = sphere_create(vector_create(0, 0, -6), 1.0, vector_create(0.9, 0.9, 0.9), 0.8, 1.5, 1.0);
@@ -117,6 +135,8 @@ int main(int argc, char* argv[]) {
     water_sphere.dispersion = 0.02;     // Slight water dispersion
     
     scene_add_sphere(&scene, glass_sphere);  // Glass sphere at focal plane
+    scene.sphere_animations[0] = glass_sphere_track;  // Assign animation track to glass sphere
+    scene.motion_blur_intensity = 0.5;  // Enable motion blur
     scene_add_sphere(&scene, metal_sphere);  // Metal sphere in front
     scene_add_sphere(&scene, water_sphere);  // Water sphere behind
     scene_add_sphere(&scene, sphere_create(vector_create(0, -101, -5), 100.0, vector_create(0.5, 0.5, 0.5), 0.1, 1.0, 0.5)); // Ground plane
@@ -142,33 +162,58 @@ int main(int argc, char* argv[]) {
         vector_create(0, 0, focal_length)
     );
 
-    // Render scene
-    for (int j = HEIGHT - 1; j >= 0; j--) {
-        fprintf(stderr, "\rScanlines remaining: %d ", j);
-        for (int i = 0; i < WIDTH; i++) {
-            Vector3 color = vector_create(0, 0, 0);
-            const int samples_per_pixel = 16;  // Increased samples for better quality
+    // Animation rendering loop
+    int total_frames = end_frame > 0 ? (end_frame - start_frame + 1) : 1;
+    
+    for (int frame = 0; frame < total_frames; frame++) {
+        scene.animation_state.current_frame = start_frame + frame;
+        scene.animation_state.current_time = scene.animation_state.current_frame / frame_rate;
+        
+        char frame_filename[256];
+        if (format == FORMAT_PNG) {
+            snprintf(frame_filename, sizeof(frame_filename), output_file, scene.animation_state.current_frame);
+        }
+        
+        fprintf(stderr, "\nRendering frame %d/%d\n", frame + 1, total_frames);
+        
+        // Render scene
+        for (int j = HEIGHT - 1; j >= 0; j--) {
+            fprintf(stderr, "\rScanlines remaining: %d ", j);
+            for (int i = 0; i < WIDTH; i++) {
+                Vector3 color = vector_create(0, 0, 0);
+                const int samples_per_pixel = 4;   // Reduced samples for better performance
+                const int motion_samples = scene.motion_blur_intensity > 0 ? 4 : 1; // Reduced motion blur samples
 
-            // Anti-aliasing: Take multiple samples per pixel
+            // Anti-aliasing and motion blur sampling
             for (int s = 0; s < samples_per_pixel; s++) {
-                double u = ((double)i + ((double)rand() / RAND_MAX)) / (WIDTH - 1);
-                double v = ((double)j + ((double)rand() / RAND_MAX)) / (HEIGHT - 1);
+                for (int m = 0; m < motion_samples; m++) {
+                    // Calculate time offset for motion blur
+                    double time_offset = 0.0;
+                    if (motion_samples > 1) {
+                        time_offset = ((double)m / (motion_samples - 1) - 0.5) * 
+                                    scene.motion_blur_intensity * scene.animation_state.time_step;
+                    }
+                    
+                    double u = ((double)i + ((double)rand() / RAND_MAX)) / (WIDTH - 1);
+                    double v = ((double)j + ((double)rand() / RAND_MAX)) / (HEIGHT - 1);
 
-                Vector3 direction = vector_subtract(
-                    vector_add(
-                        vector_add(lower_left_corner,
-                            vector_multiply(horizontal, u)),
-                        vector_multiply(vertical, v)
-                    ),
-                    camera_pos
-                );
+                    Vector3 direction = vector_subtract(
+                        vector_add(
+                            vector_add(lower_left_corner,
+                                vector_multiply(horizontal, u)),
+                            vector_multiply(vertical, v)
+                        ),
+                        camera_pos
+                    );
 
-                Ray ray = ray_create(camera_pos, direction);
-                color = vector_add(color, scene_trace(&scene, ray, MAX_DEPTH));
+                    Ray ray = ray_create(camera_pos, direction);
+                    ray.time = scene.animation_state.current_time + time_offset;
+                    color = vector_add(color, scene_trace(&scene, ray, MAX_DEPTH));
+                }
             }
             
-            // Average the color samples
-            color = vector_divide(color, samples_per_pixel);
+            // Average the color samples (including motion blur samples)
+            color = vector_divide(color, samples_per_pixel * motion_samples);
             
             if (format == FORMAT_PPM) {
                 write_color_ppm(fp, color);
@@ -180,10 +225,20 @@ int main(int argc, char* argv[]) {
 
     fprintf(stderr, "\nDone.\n");
 
-    if (format == FORMAT_PPM) {
-        fclose(fp);
-    } else {
-        save_png(output_file, pixels, WIDTH, HEIGHT);
+    // Save frame
+        if (format == FORMAT_PPM) {
+            // For PPM format, we only support single frame output
+            fclose(fp);
+            break;
+        } else {
+            save_png(frame_filename, pixels, WIDTH, HEIGHT);
+        }
+        
+        // Update animation state
+        animation_update_state(&scene.animation_state);
+    }
+    
+    if (pixels) {
         free(pixels);
     }
 

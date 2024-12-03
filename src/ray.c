@@ -4,7 +4,8 @@ Ray ray_create(Vector3 origin, Vector3 direction) {
     Ray r = {
         .origin = origin,
         .direction = vector_normalize(direction),
-        .wavelength_offset = 0.0
+        .wavelength_offset = 0.0,
+        .time = 0.0
     };
     return r;
 }

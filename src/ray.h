@@ -7,6 +7,7 @@ typedef struct {
     Vector3 origin;
     Vector3 direction;
     double wavelength_offset;  // For chromatic aberration
+    double time;              // Time parameter for motion blur
 } Ray;
 
 Ray ray_create(Vector3 origin, Vector3 direction);

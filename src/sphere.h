@@ -5,6 +5,22 @@
 #include "ray.h"
 #include <stddef.h>
 
+// Pattern type enumeration
+typedef enum {
+    PATTERN_SOLID,
+    PATTERN_CHECKERBOARD,
+    PATTERN_STRIPE,
+    PATTERN_GRADIENT
+} PatternType;
+
+// Pattern structure definition
+typedef struct {
+    PatternType type;
+    double scale;
+    Vector3 color1;    // Primary color
+    Vector3 color2;    // Secondary color
+} Pattern;
+
 // Sphere structure definition
 typedef struct Sphere {
     Vector3 center;
@@ -19,6 +35,7 @@ typedef struct Sphere {
     double metallic;       // Metallic factor for PBR
     Texture* color_texture;// Color texture map
     double texture_scale;  // Texture tiling scale
+    Pattern pattern;       // Material pattern
 } Sphere;
 
 // Function declarations

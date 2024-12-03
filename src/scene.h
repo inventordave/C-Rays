@@ -6,6 +6,7 @@
 #include "sphere.h"
 #include "light.h"
 #include "mesh.h"
+#include "animation.h"
 
 #define MAX_SPHERES 10
 #define MAX_LIGHTS 5
