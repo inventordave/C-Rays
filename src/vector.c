@@ -23,17 +23,17 @@ PrecisionMode vector_get_precision_mode(void) {
 // String-based vector implementation
 Vector3String vector3_string_create(const char* x, const char* y, const char* z) {
     Vector3String v;
-    v.x = strdup(x ? x : "0.0");
-    v.y = strdup(y ? y : "0.0");
-    v.z = strdup(z ? z : "0.0");
+    v.x = string_create(x ? x : "0.0");
+    v.y = string_create(y ? y : "0.0");
+    v.z = string_create(z ? z : "0.0");
     return v;
 }
 
 void vector3_string_free(Vector3String* v) {
     if (v) {
-        free(v->x);
-        free(v->y);
-        free(v->z);
+        string_release(v->x);
+        string_release(v->y);
+        string_release(v->z);
         v->x = v->y = v->z = NULL;
     }
 }
@@ -108,9 +108,9 @@ Vector3String vector3_string_reflect(const Vector3String* v, const Vector3String
 
 Vector3 vector3_string_to_double(const Vector3String* v) {
     Vector3 result;
-    result.x = atof(v->x);
-    result.y = atof(v->y);
-    result.z = atof(v->z);
+    result.x = atof(string_get(v->x));
+    result.y = atof(string_get(v->y));
+    result.z = atof(string_get(v->z));
     return result;
 }
 

@@ -1,31 +1,55 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
+#include "stringy.h"
+
 // Precision mode enumeration
 typedef enum {
     PRECISION_DOUBLE,    // Standard double precision
     PRECISION_ARBITRARY  // Arbitrary precision using APDecimal
 } PrecisionMode;
 
+// Double-based vector2 representation
 typedef struct {
     double u, v;
-} Vector2;
+} Vector2Double;
 
-// Vector2 operations
-Vector2 vector2_create(double u, double v);
-Vector2 vector2_add(Vector2 a, Vector2 b);
-Vector2 vector2_subtract(Vector2 a, Vector2 b);
-Vector2 vector2_multiply(Vector2 v, double scalar);
-Vector2 vector2_divide(Vector2 v, double scalar);
-double vector2_dot(Vector2 a, Vector2 b);
-double vector2_length(Vector2 v);
-Vector2 vector2_normalize(Vector2 v);
+// String-based vector2 representation
+typedef struct {
+    StringHandle* u;
+    StringHandle* v;
+} Vector2String;
+
+// Vector2Double operations
+Vector2Double vector2_double_create(double u, double v);
+Vector2Double vector2_double_add(Vector2Double a, Vector2Double b);
+Vector2Double vector2_double_subtract(Vector2Double a, Vector2Double b);
+Vector2Double vector2_double_multiply(Vector2Double v, double scalar);
+Vector2Double vector2_double_divide(Vector2Double v, double scalar);
+double vector2_double_dot(Vector2Double a, Vector2Double b);
+double vector2_double_length(Vector2Double v);
+Vector2Double vector2_double_normalize(Vector2Double v);
+
+// Vector2String operations
+Vector2String vector2_string_create(const char* u, const char* v);
+void vector2_string_free(Vector2String* v);
+Vector2String vector2_string_add(const Vector2String* a, const Vector2String* b);
+Vector2String vector2_string_subtract(const Vector2String* a, const Vector2String* b);
+Vector2String vector2_string_multiply(const Vector2String* v, const char* scalar);
+Vector2String vector2_string_divide(const Vector2String* v, const char* scalar);
+char* vector2_string_dot(const Vector2String* a, const Vector2String* b);
+char* vector2_string_length(const Vector2String* v);
+Vector2String vector2_string_normalize(const Vector2String* v);
+
+// Conversion functions
+Vector2Double vector2_string_to_double(const Vector2String* v);
+Vector2String vector2_double_to_string(const Vector2Double* v);
 
 // String-based vector representation
 typedef struct {
-    char* x;
-    char* y;
-    char* z;
+    StringHandle* x;
+    StringHandle* y;
+    StringHandle* z;
 } Vector3String;
 
 // Double-based vector representation
