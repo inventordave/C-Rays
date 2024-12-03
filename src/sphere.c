@@ -191,3 +191,45 @@ int sphere_intersect(Sphere* sphere, Ray ray, double t_min, double t_max, Hit* h
     }
     return 0;
 }
+
+// Calculate UV coordinates for sphere texture mapping
+Vector2 calculate_sphere_uv(Vector3 point, Vector3 center, double scale) {
+    // Convert point to sphere-local coordinates
+    Vector3 local = vector_subtract(point, center);
+    local = vector_multiply(local, scale);
+    
+    // Calculate spherical coordinates
+    double phi = atan2(local.z, local.x);
+    double theta = acos(local.y / vector_length(local));
+    
+    // Convert to UV coordinates
+    Vector2 uv = {
+        .x = (phi + M_PI) / (2.0 * M_PI),  // U coordinate [0,1]
+        .y = theta / M_PI                   // V coordinate [0,1]
+    };
+    
+    return uv;
+}
+
+// Sample color from texture at given UV coordinates
+Vector3 sample_texture(Vector2 tex_coord, Texture* texture) {
+    if (!texture || !texture->data) {
+        return vector_create(1.0, 1.0, 1.0);  // Return white if no texture
+    }
+    
+    // Calculate pixel coordinates
+    int x = (int)(tex_coord.x * texture->width) % texture->width;
+    int y = (int)(tex_coord.y * texture->height) % texture->height;
+    
+    // Ensure positive coordinates
+    x = (x + texture->width) % texture->width;
+    y = (y + texture->height) % texture->height;
+    
+    // Sample texture data
+    int idx = (y * texture->width + x) * texture->channels;
+    return vector_create(
+        texture->data[idx] / 255.0,
+        texture->data[idx + 1] / 255.0,
+        texture->data[idx + 2] / 255.0
+    );
+}
