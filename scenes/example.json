@@ -13,6 +13,12 @@
             "fresnel_power": 1.0,
             "texture": {
                 "path": "textures/glass.png"
+            },
+            "pattern": {
+                "type": "checkerboard",
+                "scale": 0.5,
+                "color1": {"x": 0.9, "y": 0.9, "z": 0.9},
+                "color2": {"x": 0.1, "y": 0.1, "z": 0.1}
             }
         },
         {

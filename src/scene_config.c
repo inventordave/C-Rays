@@ -92,8 +92,36 @@ void load_sphere_config(JsonObject* obj, Scene* scene) {
     
     Sphere sphere = sphere_create(center, radius, color, reflectivity, fresnel_ior, fresnel_power);
     
+    // Load texture if present
     if (texture_val) {
         load_texture_config(texture_val, &sphere.color_texture, scene);
+    }
+    
+    // Load pattern configuration if present
+    JsonValue* pattern_val = json_object_get(obj, "pattern");
+    if (pattern_val && pattern_val->type == JSON_OBJECT) {
+        JsonObject* pattern_obj = pattern_val->value.object;
+        JsonValue* type_val = json_object_get(pattern_obj, "type");
+        JsonValue* scale_val = json_object_get(pattern_obj, "scale");
+        JsonValue* color1_val = json_object_get(pattern_obj, "color1");
+        JsonValue* color2_val = json_object_get(pattern_obj, "color2");
+        
+        int success;
+        const char* type_str = json_get_string(type_val, &success);
+        if (success && type_str) {
+            if (strcmp(type_str, "solid") == 0) sphere.pattern.type = PATTERN_SOLID;
+            else if (strcmp(type_str, "checkerboard") == 0) sphere.pattern.type = PATTERN_CHECKERBOARD;
+            else if (strcmp(type_str, "stripe") == 0) sphere.pattern.type = PATTERN_STRIPE;
+            else if (strcmp(type_str, "gradient") == 0) sphere.pattern.type = PATTERN_GRADIENT;
+            else {
+                fprintf(stderr, "Warning: Unknown pattern type '%s', defaulting to solid\n", type_str);
+                sphere.pattern.type = PATTERN_SOLID;
+            }
+            
+            sphere.pattern.scale = get_json_number(scale_val, 1.0);
+            sphere.pattern.color1 = color1_val ? parse_vector3_json(color1_val) : color;
+            sphere.pattern.color2 = color2_val ? parse_vector3_json(color2_val) : vector_create(0, 0, 0);
+        }
     }
     
     scene_add_sphere(scene, sphere);
@@ -190,14 +218,38 @@ static Scene* load_scene_from_xml(const char* config_file) {
                 XmlNode* center = xml_find_child(sphere, "center");
                 XmlNode* color = xml_find_child(sphere, "color");
                 
-                Sphere s = {
-                    .center = center ? parse_vector3_xml(center) : vector_create(0, 0, 0),
-                    .radius = atof(xml_get_attribute(sphere, "radius") ?: "1.0"),
-                    .color = color ? parse_vector3_xml(color) : vector_create(1, 1, 1),
-                    .reflectivity = atof(xml_get_attribute(sphere, "reflectivity") ?: "0.0"),
-                    .fresnel_ior = atof(xml_get_attribute(sphere, "fresnel_ior") ?: "1.5"),
-                    .fresnel_power = atof(xml_get_attribute(sphere, "fresnel_power") ?: "1.0")
-                };
+                Sphere s = sphere_create(
+                    center ? parse_vector3_xml(center) : vector_create(0, 0, 0),
+                    atof(xml_get_attribute(sphere, "radius") ?: "1.0"),
+                    color ? parse_vector3_xml(color) : vector_create(1, 1, 1),
+                    atof(xml_get_attribute(sphere, "reflectivity") ?: "0.0"),
+                    atof(xml_get_attribute(sphere, "fresnel_ior") ?: "1.5"),
+                    atof(xml_get_attribute(sphere, "fresnel_power") ?: "1.0")
+                );
+                
+                // Load pattern configuration if present
+                XmlNode* pattern = xml_find_child(sphere, "pattern");
+                if (pattern) {
+                    const char* type = xml_get_attribute(pattern, "type");
+                    if (type) {
+                        if (strcmp(type, "solid") == 0) s.pattern.type = PATTERN_SOLID;
+                        else if (strcmp(type, "checkerboard") == 0) s.pattern.type = PATTERN_CHECKERBOARD;
+                        else if (strcmp(type, "stripe") == 0) s.pattern.type = PATTERN_STRIPE;
+                        else if (strcmp(type, "gradient") == 0) s.pattern.type = PATTERN_GRADIENT;
+                        else {
+                            fprintf(stderr, "Warning: Unknown pattern type '%s', defaulting to solid\n", type);
+                            s.pattern.type = PATTERN_SOLID;
+                        }
+                        
+                        s.pattern.scale = atof(xml_get_attribute(pattern, "scale") ?: "1.0");
+                        
+                        XmlNode* color1 = xml_find_child(pattern, "color1");
+                        XmlNode* color2 = xml_find_child(pattern, "color2");
+                        
+                        s.pattern.color1 = color1 ? parse_vector3_xml(color1) : s.color;
+                        s.pattern.color2 = color2 ? parse_vector3_xml(color2) : vector_create(0, 0, 0);
+                    }
+                }
                 
                 scene_add_sphere(scene, s);
             }
