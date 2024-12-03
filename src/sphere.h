@@ -10,7 +10,10 @@ typedef enum {
     PATTERN_SOLID,
     PATTERN_CHECKERBOARD,
     PATTERN_STRIPE,
-    PATTERN_GRADIENT
+    PATTERN_GRADIENT,
+    PATTERN_PERLIN_NOISE,
+    PATTERN_MARBLE,
+    PATTERN_WOOD
 } PatternType;
 
 // Pattern structure definition

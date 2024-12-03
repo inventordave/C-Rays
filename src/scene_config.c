@@ -113,6 +113,9 @@ void load_sphere_config(JsonObject* obj, Scene* scene) {
             else if (strcmp(type_str, "checkerboard") == 0) sphere.pattern.type = PATTERN_CHECKERBOARD;
             else if (strcmp(type_str, "stripe") == 0) sphere.pattern.type = PATTERN_STRIPE;
             else if (strcmp(type_str, "gradient") == 0) sphere.pattern.type = PATTERN_GRADIENT;
+            else if (strcmp(type_str, "perlin") == 0) sphere.pattern.type = PATTERN_PERLIN_NOISE;
+            else if (strcmp(type_str, "marble") == 0) sphere.pattern.type = PATTERN_MARBLE;
+            else if (strcmp(type_str, "wood") == 0) sphere.pattern.type = PATTERN_WOOD;
             else {
                 fprintf(stderr, "Warning: Unknown pattern type '%s', defaulting to solid\n", type_str);
                 sphere.pattern.type = PATTERN_SOLID;

@@ -15,10 +15,10 @@
                 "path": "textures/glass.png"
             },
             "pattern": {
-                "type": "checkerboard",
-                "scale": 0.5,
+                "type": "marble",
+                "scale": 2.0,
                 "color1": {"x": 0.9, "y": 0.9, "z": 0.9},
-                "color2": {"x": 0.1, "y": 0.1, "z": 0.1}
+                "color2": {"x": 0.2, "y": 0.1, "z": 0.1}
             }
         },
         {

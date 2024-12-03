@@ -6,9 +6,9 @@
             <center x="0" y="0" z="-6"/>
             <color x="0.9" y="0.9" z="0.9"/>
             <texture path="textures/glass.png"/>
-            <pattern type="checkerboard" scale="0.5">
-                <color1 x="0.9" y="0.9" z="0.9"/>
-                <color2 x="0.1" y="0.1" z="0.1"/>
+            <pattern type="wood" scale="3.0">
+                <color1 x="0.8" y="0.6" z="0.4"/>
+                <color2 x="0.4" y="0.2" z="0.1"/>
             </pattern>
         </sphere>
         <sphere radius="0.7" reflectivity="0.9" fresnel_ior="2.4" fresnel_power="0.8">
