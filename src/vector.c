@@ -2,6 +2,9 @@
 #include "aplib.h"
 #include <math.h>
 #include <float.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 
 #define EPSILON 1e-8
 #define MIN_DENOMINATOR 1e-10
@@ -17,13 +20,118 @@ PrecisionMode vector_get_precision_mode(void) {
     return current_precision_mode;
 }
 
+// String-based vector implementation
+Vector3String vector3_string_create(const char* x, const char* y, const char* z) {
+    Vector3String v;
+    v.x = strdup(x ? x : "0.0");
+    v.y = strdup(y ? y : "0.0");
+    v.z = strdup(z ? z : "0.0");
+    return v;
+}
+
+void vector3_string_free(Vector3String* v) {
+    if (v) {
+        free(v->x);
+        free(v->y);
+        free(v->z);
+        v->x = v->y = v->z = NULL;
+    }
+}
+
+Vector3String vector3_string_add(const Vector3String* a, const Vector3String* b) {
+    char result_x[64], result_y[64], result_z[64];
+    Vector3 va = vector3_string_to_double(a);
+    Vector3 vb = vector3_string_to_double(b);
+    Vector3 result = aplib_vector_add(va, vb);
+    snprintf(result_x, sizeof(result_x), "%.20f", result.x);
+    snprintf(result_y, sizeof(result_y), "%.20f", result.y);
+    snprintf(result_z, sizeof(result_z), "%.20f", result.z);
+    return vector3_string_create(result_x, result_y, result_z);
+}
+
+// Implement all string-based vector operations
+Vector3String vector3_string_subtract(const Vector3String* a, const Vector3String* b) {
+    Vector3 va = vector3_string_to_double(a);
+    Vector3 vb = vector3_string_to_double(b);
+    Vector3 result = aplib_vector_subtract(va, vb);
+    return vector3_double_to_string(&result);
+}
+
+Vector3String vector3_string_multiply(const Vector3String* v, const char* scalar) {
+    Vector3 vd = vector3_string_to_double(v);
+    Vector3 result = aplib_vector_multiply(vd, scalar);
+    return vector3_double_to_string(&result);
+}
+
+Vector3String vector3_string_divide(const Vector3String* v, const char* scalar) {
+    Vector3 vd = vector3_string_to_double(v);
+    Vector3 result = aplib_vector_divide(vd, scalar);
+    return vector3_double_to_string(&result);
+}
+
+char* vector3_string_dot(const Vector3String* a, const Vector3String* b) {
+    Vector3 va = vector3_string_to_double(a);
+    Vector3 vb = vector3_string_to_double(b);
+    double result = aplib_vector_dot(va, vb);
+    char* str_result = (char*)malloc(64);
+    snprintf(str_result, 64, "%.20f", result);
+    return str_result;
+}
+
+Vector3String vector3_string_cross(const Vector3String* a, const Vector3String* b) {
+    Vector3 va = vector3_string_to_double(a);
+    Vector3 vb = vector3_string_to_double(b);
+    Vector3 result = aplib_vector_cross(va, vb);
+    return vector3_double_to_string(&result);
+}
+
+char* vector3_string_length(const Vector3String* v) {
+    Vector3 vd = vector3_string_to_double(v);
+    double result = aplib_vector_length(vd);
+    char* str_result = (char*)malloc(64);
+    snprintf(str_result, 64, "%.20f", result);
+    return str_result;
+}
+
+Vector3String vector3_string_normalize(const Vector3String* v) {
+    Vector3 vd = vector3_string_to_double(v);
+    Vector3 result = aplib_vector_normalize(vd);
+    return vector3_double_to_string(&result);
+}
+
+Vector3String vector3_string_reflect(const Vector3String* v, const Vector3String* normal) {
+    Vector3 vd = vector3_string_to_double(v);
+    Vector3 nd = vector3_string_to_double(normal);
+    Vector3 result = aplib_vector_reflect(vd, nd);
+    return vector3_double_to_string(&result);
+}
+
+Vector3 vector3_string_to_double(const Vector3String* v) {
+    Vector3 result;
+    result.x = atof(v->x);
+    result.y = atof(v->y);
+    result.z = atof(v->z);
+    return result;
+}
+
+Vector3String vector3_double_to_string(const Vector3* v) {
+    char x[64], y[64], z[64];
+    snprintf(x, sizeof(x), "%.20f", v->x);
+    snprintf(y, sizeof(y), "%.20f", v->y);
+    snprintf(z, sizeof(z), "%.20f", v->z);
+    return vector3_string_create(x, y, z);
+}
+
 Vector3 vector_create(double x, double y, double z) {
     if (current_precision_mode == PRECISION_ARBITRARY) {
-        char x_str[32], y_str[32], z_str[32];
+        char x_str[64], y_str[64], z_str[64];
         snprintf(x_str, sizeof(x_str), "%.20f", x);
         snprintf(y_str, sizeof(y_str), "%.20f", y);
         snprintf(z_str, sizeof(z_str), "%.20f", z);
-        return aplib_vector_create(x_str, y_str, z_str);
+        Vector3String str_vec = vector3_string_create(x_str, y_str, z_str);
+        Vector3 result = vector3_string_to_double(&str_vec);
+        vector3_string_free(&str_vec);
+        return result;
     }
     Vector3 v = {x, y, z};
     return v;
