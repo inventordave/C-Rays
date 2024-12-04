@@ -305,7 +305,7 @@ Vector3 scene_trace(Scene* scene, Ray ray, int depth) {
                     // Get texture color if available
                     Vector3 surface_color = hit.sphere->color;
                     if (hit.sphere->color_texture) {
-                        Vector2 tex_coord = calculate_sphere_uv(hit.point, hit.sphere->center, hit.sphere->texture_scale);
+                        Vector2Double tex_coord = calculate_sphere_uv(hit.point, hit.sphere->center, hit.sphere->texture_scale);
                         surface_color = vector_multiply_vec(surface_color, sample_texture(tex_coord, hit.sphere->color_texture));
                     }
                     
