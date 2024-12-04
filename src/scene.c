@@ -331,31 +331,27 @@ Vector3 scene_trace(Scene* scene, Ray ray, int depth) {
             color = vector_add(color, light_contribution);
         }
 
-        // Calculate Fresnel reflection using Schlick's approximation
+        // Calculate Fresnel reflection
         if (depth > 0 && hit.sphere) {
             Vector3 view_dir = vector_normalize(vector_multiply(ray.direction, -1.0));
             double cos_theta = fabs(vector_dot(view_dir, hit.normal));
             
-            // Calculate physically accurate Fresnel term
             double r0 = (hit.sphere->fresnel_ior - 1.0) / (hit.sphere->fresnel_ior + 1.0);
             r0 = r0 * r0;
             
-            // Compute roughness-adjusted Fresnel factor
             double roughness_factor = hit.sphere->roughness * hit.sphere->roughness;
             double fresnel_factor = r0 + (1.0 - r0) * pow(1.0 - cos_theta, 5.0) * hit.sphere->fresnel_power;
             
-            // Adjust for metallic surfaces
             if (hit.sphere->metallic > 0.0) {
                 fresnel_factor = fresnel_factor * (1.0 - roughness_factor) + hit.sphere->metallic * roughness_factor;
             }
             
-            // Blend with material's base reflectivity
             double final_reflectivity = hit.sphere->reflectivity * fresnel_factor;
             
             if (final_reflectivity > 0.0) {
                 Vector3 reflected = vector_reflect(ray.direction, hit.normal);
                 Ray reflect_ray = ray_create(hit.point, reflected);
-                reflect_ray.time = ray.time;  // Maintain time consistency for animations
+                reflect_ray.time = ray.time;
                 Vector3 reflect_color = scene_trace(scene, reflect_ray, depth - 1);
                 color = vector_add(color, vector_multiply(reflect_color, final_reflectivity));
             }
