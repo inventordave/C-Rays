@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 #define STB_IMAGE_IMPLEMENTATION
-//#include <stbstb_image.h>
+#include "stb_image.h"
 #include "stb_image_write.h"
 
 Texture* scene_load_normal_map(Scene* scene, const char* filename) {

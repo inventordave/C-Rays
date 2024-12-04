@@ -42,8 +42,8 @@ typedef struct Sphere {
 } Sphere;
 
 // Function declarations
-Vector3 sample_texture(Vector2 tex_coord, Texture* texture);
-Vector2 calculate_sphere_uv(Vector3 point, Vector3 center, double scale);
+Vector3 sample_texture(Vector2Double tex_coord, Texture* texture);
+Vector2Double calculate_sphere_uv(Vector3 point, Vector3 center, double scale);
 
 struct Sphere sphere_create(Vector3 center, double radius, Vector3 color, double reflectivity, 
                           double fresnel_ior, double fresnel_power);
