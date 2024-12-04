@@ -27,6 +27,10 @@ args = "Raytracer PNG"
 task = "workflow.run"
 args = "Scene Config Test"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Test Outputs"
+
 [[workflows.workflow]]
 name = "Raytracer"
 author = "agent"
@@ -39,7 +43,7 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "gcc src/*.c -o raytracer -lm && ./raytracer"
+args = "gcc src/*.c -o raytracer -lm && ./raytracer --scene scenes/example.json"
 
 [[workflows.workflow]]
 name = "ImageViewer"
@@ -97,8 +101,22 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "make clean && make && ./build/raytracer --scene scenes/example.json --format png && ./build/raytracer --scene scenes/example.xml --format png"
 
+[[workflows.workflow]]
+name = "Test Outputs"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "gcc src/*.c -o raytracer -lm && ./raytracer --scene scenes/example.json && ./raytracer --scene scenes/example.json --format png"
+
 [deployment]
-run = ["sh", "-c", "gcc src/*.c -o raytracer -lm && ./raytracer"]
+run = ["sh", "-c", "gcc src/*.c -o raytracer -lm && ./raytracer --scene scenes/example.json"]
 
 [nix]
 channel = "stable-24_05"
