@@ -4,7 +4,7 @@
         "focal_distance": 5.0,
         "chromatic_aberration": 0.02
     },
-    "background_color": {"x": 0.9, "y": 0.85, "z": 0.95},
+    "background_color": {"x": 0.6, "y": 0.8, "z": 1.0},
     "spheres": [
         {
             "center": {"x": 0, "y": 0, "z": -6},
@@ -15,7 +15,14 @@
             "fresnel_power": 0.9,
             "metallic": 0.8,
             "roughness": 0.1,
-            "glossiness": 0.9
+            "glossiness": 0.9,
+            "texture_scale": 2.0,
+            "pattern": {
+                "type": "checkerboard",
+                "scale": 4.0,
+                "color1": {"x": 1.0, "y": 0.8, "z": 0.0},
+                "color2": {"x": 0.2, "y": 0.2, "z": 0.2}
+            }
         },
         {
             "center": {"x": -2, "y": 1, "z": -5},

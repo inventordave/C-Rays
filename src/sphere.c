@@ -50,19 +50,18 @@ Vector2Double calculate_sphere_uv(Vector3 point, Vector3 center, double scale) {
     double theta = acos(fmax(-1.0 + POLE_EPSILON, fmin(1.0 - POLE_EPSILON, dir.y)));
     
     // Convert to UV coordinates with smooth pole handling
-    Vector2Double uv;
-    uv.u = (phi + M_PI) / (2.0 * M_PI);  // U coordinate [0,1]
+    double u = (phi + M_PI) / (2.0 * M_PI);  // U coordinate [0,1]
     
     // Apply smoothing near poles to reduce pinching
     double pole_blend = pow(sin(theta), 0.5);  // Smooth transition near poles
-    uv.v = (theta / M_PI) * pole_blend + (0.5 * (1.0 - pole_blend));
+    double v = (theta / M_PI) * pole_blend + (0.5 * (1.0 - pole_blend));
     
     // Ensure UV coordinates are properly normalized
-    uv.u = fmod(uv.u, 1.0);
-    if (uv.u < 0.0) uv.u += 1.0;
-    uv.v = fmax(0.0, fmin(1.0, uv.v));
+    u = fmod(u, 1.0);
+    if (u < 0.0) u += 1.0;
+    v = fmax(0.0, fmin(1.0, v));
     
-    return uv;
+    return vector2_double_create(u, v);
 }
 
 // Sample color from texture at given UV coordinates with bilinear interpolation
@@ -148,9 +147,9 @@ int sphere_intersect(Sphere* sphere, Ray ray, double t_min, double t_max, Hit* h
         
         // Calculate normal with proper normalization
         Vector3 normal = vector_subtract(hit->point, sphere->center);
-        hit->normal = vector_normalize(normal);  // Ensure normalized normal
+        hit->normal = vector_normalize(normal);
         
-        // Calculate texture coordinates
+        // Calculate UV coordinates
         hit->tex_coord = calculate_sphere_uv(hit->point, sphere->center, sphere->texture_scale);
         
         hit->sphere = sphere;
@@ -164,9 +163,9 @@ int sphere_intersect(Sphere* sphere, Ray ray, double t_min, double t_max, Hit* h
         
         // Calculate normal with proper normalization
         Vector3 normal = vector_subtract(hit->point, sphere->center);
-        hit->normal = vector_normalize(normal);  // Ensure normalized normal
+        hit->normal = vector_normalize(normal);
         
-        // Calculate texture coordinates
+        // Calculate UV coordinates
         hit->tex_coord = calculate_sphere_uv(hit->point, sphere->center, sphere->texture_scale);
         
         hit->sphere = sphere;
