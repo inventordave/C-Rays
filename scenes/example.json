@@ -1,15 +1,15 @@
 {
     "camera": {
-        "aperture": 0.3,
-        "focal_distance": 6.0,
+        "aperture": 0.2,
+        "focal_distance": 5.0,
         "chromatic_aberration": 0.02
     },
-    "background_color": {"x": 0.7, "y": 0.85, "z": 1.0},
+    "background_color": {"x": 0.85, "y": 0.95, "z": 1.0},
     "spheres": [
         {
             "center": {"x": 0, "y": 0, "z": -6},
             "radius": 1.5,
-            "color": {"x": 1.0, "y": 0.84, "z": 0.0},
+            "color": {"x": 1.0, "y": 0.8, "z": 0.0},
             "reflectivity": 0.8,
             "fresnel_ior": 1.5,
             "fresnel_power": 0.9,
@@ -20,7 +20,7 @@
         {
             "center": {"x": -2, "y": 1, "z": -5},
             "radius": 1.0,
-            "color": {"x": 0.53, "y": 0.81, "z": 0.98},
+            "color": {"x": 0.3, "y": 0.6, "z": 1.0},
             "reflectivity": 0.95,
             "fresnel_ior": 1.5,
             "fresnel_power": 1.0,
@@ -31,7 +31,7 @@
         {
             "center": {"x": 2, "y": 0.5, "z": -4},
             "radius": 0.8,
-            "color": {"x": 1.0, "y": 0.41, "z": 0.71},
+            "color": {"x": 1.0, "y": 0.2, "z": 0.8},
             "reflectivity": 0.7,
             "fresnel_ior": 1.4,
             "fresnel_power": 0.8,
@@ -61,19 +61,19 @@
             "type": "area",
             "position": {"x": 5, "y": 5, "z": -3},
             "color": {"x": 1.0, "y": 0.95, "z": 0.8},
-            "intensity": 2.0,
+            "intensity": 4.0,
             "radius": 2.0
         },
         {
             "type": "area",
             "position": {"x": -4, "y": 3, "z": -2},
             "color": {"x": 0.8, "y": 0.9, "z": 1.0},
-            "intensity": 1.5,
+            "intensity": 3.0,
             "radius": 1.5
         }
     ],
     "ambient": {
-        "intensity": 0.3,
+        "intensity": 0.5,
         "color": {"x": 1.0, "y": 1.0, "z": 1.0}
     }
 }
