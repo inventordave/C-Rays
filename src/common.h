@@ -16,11 +16,6 @@ typedef struct {
 #define TEXTURE_TYPE_COLOR 0
 #define TEXTURE_TYPE_NORMAL 1
 
-// Vector2 struct for texture coordinates
-typedef struct {
-    double u, v;
-} Vector2;
-
 // Forward declarations
 struct Sphere;
 struct Mesh;
@@ -31,7 +26,7 @@ typedef struct Hit {
     double t;
     Vector3 point;
     Vector3 normal;
-    Vector2 tex_coord;    // Texture coordinates (u,v)
+    Vector2Double tex_coord;    // Texture coordinates (u,v)
     union {
         struct Sphere* sphere;
         struct Mesh* mesh;

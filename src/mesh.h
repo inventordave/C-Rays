@@ -44,6 +44,6 @@ int ray_triangle_intersect(Ray ray, Triangle triangle, double t_min, double t_ma
 // Utility functions
 void mesh_compute_triangle_normal(Triangle* triangle);
 Mesh create_cube_mesh(Vector3 position, double size, Vector3 color, double reflectivity);
-Vector3 calculate_mesh_normal(Vector3 normal, Vector2 tex_coord, Texture* normal_map);
+Vector3 calculate_mesh_normal(Vector3 normal, Vector2Double tex_coord, Texture* normal_map);
 
 #endif
