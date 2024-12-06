@@ -99,7 +99,7 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "make clean && make && ./build/raytracer --scene scenes/example.json --format png && ./build/raytracer --scene scenes/example.xml --format png"
+args = "make clean && make && ./build/raytracer --scene scenes/example.json --format png"
 
 [[workflows.workflow]]
 name = "Test Outputs"

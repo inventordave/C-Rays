@@ -12,10 +12,13 @@
             "fresnel_ior": 1.5,
             "fresnel_power": 1.0,
             "texture": {
-                "path": "textures/glass.png"
+                "path": "textures/checkerboard.png",
+                "scale": 1.0,
+                "uv_offset": {"u": 0.0, "v": 0.0},
+                "uv_scale": {"u": 1.0, "v": 1.0}
             },
             "pattern": {
-                "type": "marble",
+                "type": "checkerboard",
                 "scale": 2.0,
                 "color1": {"x": 0.9, "y": 0.9, "z": 0.9},
                 "color2": {"x": 0.2, "y": 0.1, "z": 0.1}
