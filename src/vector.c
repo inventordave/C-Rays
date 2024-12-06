@@ -239,3 +239,61 @@ Vector3 vector_reflect(Vector3 v, Vector3 normal) {
     Vector3 scaled = vector_multiply_precise(normal, 2.0 * dot);
     return vector_subtract(v, scaled);
 }
+
+
+// Vector2Double operations implementation
+Vector2Double vector2_double_create(double u, double v) {
+    Vector2Double vec = {u, v};
+    return vec;
+}
+
+Vector2Double vector2_double_add(Vector2Double a, Vector2Double b) {
+    return vector2_double_create(a.u + b.u, a.v + b.v);
+}
+
+Vector2Double vector2_double_subtract(Vector2Double a, Vector2Double b) {
+    return vector2_double_create(a.u - b.u, a.v - b.v);
+}
+
+Vector2Double vector2_double_multiply(Vector2Double v, double scalar) {
+    return vector2_double_create(v.u * scalar, v.v * scalar);
+}
+
+Vector2Double vector2_double_divide(Vector2Double v, double scalar) {
+    if (fabs(scalar) < EPSILON) {
+        scalar = scalar < 0 ? -EPSILON : EPSILON;
+    }
+    return vector2_double_create(v.u / scalar, v.v / scalar);
+}
+
+double vector2_double_dot(Vector2Double a, Vector2Double b) {
+    return a.u * b.u + a.v * b.v;
+}
+
+double vector2_double_length(Vector2Double v) {
+    return sqrt(vector2_double_dot(v, v));
+}
+
+Vector2Double vector2_double_normalize(Vector2Double v) {
+    double length = vector2_double_length(v);
+    if (length < EPSILON) {
+        return v;
+    }
+    return vector2_double_divide(v, length);
+}
+
+// Vector2String operations implementation
+Vector2String vector2_string_create(const char* u, const char* v) {
+    Vector2String vec;
+    vec.u = string_create(u ? u : "0.0");
+    vec.v = string_create(v ? v : "0.0");
+    return vec;
+}
+
+void vector2_string_free(Vector2String* v) {
+    if (v) {
+        string_release(v->u);
+        string_release(v->v);
+        v->u = v->v = NULL;
+    }
+}
